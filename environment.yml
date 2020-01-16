@@ -1,4 +1,4 @@
-name: base
+name: katcorr
 channels:
   - conda-forge
   - tpeulen

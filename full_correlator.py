@@ -6,45 +6,13 @@ import numba as nb
 import pylab as p
 import tttrlib
 
-
+# jit = just in time compiler, compiles code before execution to speed up algorithm
 @nb.jit(
     nopython=True
 )
-def get_start_stop_of_time_windows(
-        macro_times: np.ndarray,
-        selected_indices: np.ndarray,
-        macro_time_calibration: float,
-        time_window_size_seconds: float = 2.0,
-) -> typing.List:
-    """Determines a list of start and stop indices for a TTTR object with
-    selected indices and that correspond to the indices of the start and stop
-    of time-windows.
-
-    :param macro_times: numpy array of macro times
-    :param macro_time_calibration: the macro time clock in milliseconds
-    :param selected_indices: A preselected list of indices that defines which events
-    in the TTTR event stream are considered
-    :param time_window_size_seconds: The size of the time windows
-    :return:
-    """
-    time_window_size_idx = int(time_window_size_seconds / macro_time_calibration * 1000.0)
-    start_stop = list()
-    macro_time_start_idx = 0
-    macro_time_start = macro_times[macro_time_start_idx]
-    for idx in selected_indices[1:]:
-        macro_time_current = macro_times[idx]
-        dt = macro_time_current - macro_time_start
-        if dt >= time_window_size_idx:
-            macro_time_start = macro_time_current
-            macro_time_stop_idx = idx
-            start_stop.append([macro_time_start_idx, macro_time_stop_idx])
-            macro_time_start_idx = idx
-    return start_stop
-
-
-@nb.jit(
-    nopython=True
-)
+# Slices the full trace of the data into pieces of 2 seconds
+# Determines and saves the event-ID of the "start" and "end" of these slices
+# change the number after time_window_size_seconds to slice data in larger pieces
 def get_indices_of_time_windows(
         macro_times: np.ndarray,
         selected_indices: np.ndarray,
@@ -63,6 +31,7 @@ def get_indices_of_time_windows(
     :return:
     """
     print("Getting indices of time windows")
+    print("Time window size [sec]: ", time_window_size_seconds)
     time_window_size_idx = int(time_window_size_seconds / macro_time_calibration * 1000.0)
     returned_indeces = list()
     macro_time_start_idx = 0
@@ -80,13 +49,15 @@ def get_indices_of_time_windows(
             current_list = [idx]
     return returned_indeces
 
-
+# correlation of the full trace
 def correlate(
         macro_times: np.ndarray,
         indices_ch1: np.ndarray,
         indices_ch2: np.ndarray,
         B: int = 9,
-        n_casc: int = 25,
+        n_casc: int = 37,
+        # B and n_casc define the spacing of the logarithmic correlation axis
+        # increase n_casc if you need to correlate to longer time intervals
         micro_times: np.ndarray = None,
         micro_time_resolution: float = None,
         macro_time_clock: float = None
@@ -102,7 +73,9 @@ def correlate(
     correlator = tttrlib.Correlator()
     correlator.set_n_bins(B)
     correlator.set_n_casc(n_casc)
-    # Select the green channels (channel number 0 and 8)
+    # Select the green channels (channel number 1 and 2)
+    # w1 & w2 are weights, which will be 1 by default if not defined elsewhere
+    # use w1 & w2 e.g. for filtered FCS or when only selected events should be correlated
     t1 = times[indices_ch1]
     w1 = np.ones_like(t1, dtype=np.float)
     t2 = times[indices_ch2]
@@ -112,9 +85,11 @@ def correlate(
     x = correlator.get_x_axis_normalized()
     y = correlator.get_corr_normalized()
     t = x * time_factor
+    # p.semilogx(t, y)
+    # p.show()
     return t, y
 
-
+# correlation of the pieces
 def correlate_pieces(
         macro_times: np.ndarray,
         indices_ch1: typing.List[np.ndarray],
@@ -127,9 +102,11 @@ def correlate_pieces(
 ) -> np.ndarray:
     print("Correlating pieces...")
     n_correlations = min(len(indices_ch1), len(indices_ch2))
+    # returns nr of slices, minimum of ch1 or ch2 is reported in case they have different size
     correlation_curves = list()
     for i in range(n_correlations):
-        print("%i / %i" % (i, n_correlations))
+        print("%i / %i" % (i, n_correlations))  # gives the progress, how many pieces have already been evaluated
+        # no weights are used!
         x, y = correlate(
             macro_times=macro_times,
             indices_ch1=indices_ch1[i],
@@ -146,83 +123,19 @@ def correlate_pieces(
     )
     return correlation_curves
 
-
-def select_by_half_height_time(
-        correlation_amplitudes: typing.List[np.ndarray],
-        number_of_stdev: float = 1.0
-) -> typing.List[int]:
-    #  calculate mean of the first correlation points
-    #  use these correlation points as the initial amplitude
-    initial_amplitudes = np.mean(correlation_amplitudes[:, 5:30], axis=1)
-    # get the baseline of the correlation amplitudes
-    offsets = np.array(correlation_amplitudes[:, -1])
-    # calculate the average between initial_amplitude and offset
-
-    # find the indices of half the initial amplitude searching
-    # backwards from the offset to half the maximum
-    i_half_max = list()
-    for correlation_amplitude, initial_amplitude, offset in zip(
-            correlation_amplitudes,
-            initial_amplitudes,
-            offsets
-    ):
-        imaxhalf = np.max(
-            np.nonzero(
-                correlation_amplitude > (initial_amplitude - offset) / 2 + offset
-            )
-        )
-        i_half_max.append(imaxhalf)
-
-    # calculate mean and stdev of i_half_max
-    mean_half_max = np.mean(i_half_max)
-    stdev_half_max = number_of_stdev * np.std(i_half_max)
-
-    # filter curves for those within 1 sigma
-    selected_curves_idx = list()
-    for i, hm in enumerate(i_half_max):
-        if mean_half_max - stdev_half_max < hm < mean_half_max + stdev_half_max:
-            selected_curves_idx.append(i)
-    print("Total number of curves: ", len(i_half_max))
-    print("Selected curves: ", len(selected_curves_idx))
-    return selected_curves_idx
-
-
-def fcs_weights(
-        t: np.ndarray,
-        g: np.ndarray,
-        dur: float,
-        cr: float
-):
-    """
-    :param t: correlation times [ms]
-    :param g: correlation amplitude
-    :param dur: measurement duration [s]
-    :param cr: count-rate [kHz]
-    """
-    dt = np.diff(t)
-    dt = np.hstack([dt, dt[-1]])
-    ns = dur * 1000.0 / dt
-    na = dt * cr
-    syn = (t < 10) + (t >= 10) * 10 ** (-np.log(t + 1e-12) / np.log(10) + 1)
-    b = np.mean(g[1:5]) - 1
-    imaxhalf = np.min(np.nonzero(g < b / 2 + 1))
-    tmaxhalf = t[imaxhalf]
-    A = np.exp(-2 * dt / tmaxhalf)
-    B = np.exp(-2 * t / tmaxhalf)
-    m = t / dt
-    S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b * np.sqrt(B)) / (ns * na * na)) * syn
-    S = np.abs(S)
-    return 1. / np.sqrt(S)
-
-
 def select_by_deviation(
         correlation_amplitudes: typing.List[np.ndarray],
         d_max: float = 2e-5,
-        comparison_start: int = 150,
-        comparison_stop: int = 240
+        comparison_start: int = 220,
+        comparison_stop: int = 280
 ) -> typing.List[int]:
     print("Selecting indices of curves by deviations.")
+    print("d_max:", d_max)
+    print("Comparison time range:", comparison_start, "-", comparison_stop)
+    print("compared to the first 30 curves")
     if (comparison_start is None) or (comparison_stop is None):
+        # calculates from every curve the difference to the mean of the first 30 curves, squares this value
+        # and divides this value by the number of curves
         ds = np.mean(
             (correlation_amplitudes - correlation_amplitudes[:30].mean(axis=0))**2.0, axis=1
         ) / len(correlation_amplitudes)
@@ -232,7 +145,9 @@ def select_by_deviation(
             (ca - ca[:30].mean(axis=0)) ** 2.0, axis=1
         ) / (comparison_stop - comparison_start)
     print(ds)
-    p.plot(ds)
+    logdev = np.log10(ds)  # better would be to use semilogy(x, ds), what would be x?
+    p.plot(logdev)
+    p.show()
     selected_curves_idx = list()
     for i, d in enumerate(ds):
         if d < d_max:
@@ -240,6 +155,7 @@ def select_by_deviation(
     print("Total number of curves: ", len(ds))
     print("Selected curves: ", len(selected_curves_idx))
     return selected_curves_idx
+    # return selected_curves_idx, return #  IndexError: arrays used as indices must be of integer (or boolean) type
 
 
 data = tttrlib.TTTR('1_20min_1.ptu', 'PTU')
@@ -249,38 +165,59 @@ macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
 micro_times = data.get_micro_time()
-time_window_size = 10.0  # time window size in seconds
+time_window_size = 10.0  # time window size in seconds (overwrites selection above)
 micro_time_resolution = header.micro_time_resolution
 
-green_s_indeces = data.get_selection_by_channel(np.array([0]))
+green_s_indices = data.get_selection_by_channel(np.array([0]))
 indices_ch1 = get_indices_of_time_windows(
     macro_times=macro_times,
-    selected_indices=green_s_indeces,
+    selected_indices=green_s_indices,
     macro_time_calibration=macro_time_calibration_ms,
     time_window_size_seconds=time_window_size
 )
 
-green_p_indeces = data.get_selection_by_channel(np.array([2]))
+green_p_indices = data.get_selection_by_channel(np.array([2]))
 indices_ch2 = get_indices_of_time_windows(
     macro_times=macro_times,
-    selected_indices=green_p_indeces,
+    selected_indices=green_p_indices,
     macro_time_calibration=macro_time_calibration_ms,
     time_window_size_seconds=time_window_size
 )
 
-correlation_curves = correlate_pieces(
+correlation_curves_fine = correlate_pieces(
     macro_times=macro_times,
     indices_ch1=indices_ch1,
     indices_ch2=indices_ch2,
     micro_times=micro_times,
     micro_time_resolution=micro_time_resolution,
     macro_time_clock=macro_time_calibration_ns,
-    n_casc=42
+    n_casc=37
 )
 
-correlation_amplitudes = correlation_curves[:, 1, :]
-average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
+autocorr_curve_ch1 = correlate_pieces(
+    macro_times=macro_times,
+    indices_ch1=indices_ch1,
+    indices_ch2=indices_ch1,
+    micro_times=None,
+    micro_time_resolution=None,
+    macro_time_clock=macro_time_calibration_ns,
+    n_casc=25
+)
 
+autocorr_curve_ch2 = correlate_pieces(
+    macro_times=macro_times,
+    indices_ch1=indices_ch2,
+    indices_ch2=indices_ch2,
+    micro_times=None,
+    micro_time_resolution=None,
+    macro_time_clock=macro_time_calibration_ns,
+    n_casc=25
+)
+
+# comparison is only made for the crosscorrelation curves
+# autocorrelation curves are calculated based on the curve_ids selected by crosscorr
+correlation_amplitudes = correlation_curves_fine[:, 1, :]
+average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
 
 # sort squared deviations (get the indices)
 # sorted_indices = np.argsort(d, axis=0)
@@ -293,11 +230,13 @@ average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
 #     number_of_stdev=0.2
 # )
 
+# adjust comparison_start & stop according to your diffusion time
+# the selected values here encompass 1 ms -> 100 ms
 selected_curves_idx = select_by_deviation(
     correlation_amplitudes=correlation_amplitudes,
-    d_max=1.5e-6,
-    comparison_start=150,
-    comparison_stop=240
+    d_max=5e-5,  # selection criterion (overwrites the above value)
+    comparison_start=220,
+    comparison_stop=280
 )
 
 ########################################################
@@ -306,22 +245,50 @@ selected_curves_idx = select_by_deviation(
 selected_curves = list()
 for curve_idx in selected_curves_idx:
     selected_curves.append(
-        correlation_curves[curve_idx]
+        correlation_curves_fine[curve_idx]
     )
 selected_curves = np.array(selected_curves)
 avg_curve = np.mean(selected_curves, axis=0)
 std_curve = np.std(selected_curves, axis=0)
 
 ########################################################
+#  Average selected autocorrelation curves
+########################################################
+selected_curves_ch1 = list()
+for curve_idx in selected_curves_idx:
+    selected_curves_ch1.append(
+        autocorr_curve_ch1[curve_idx]
+    )
+selected_curves_ch1 = np.array(selected_curves_ch1)
+avg_curve_ch1 = np.mean(selected_curves_ch1, axis=0)
+std_curve_ch1 = np.std(selected_curves_ch1, axis=0)
+
+selected_curves_ch2 = list()
+for curve_idx in selected_curves_idx:
+    selected_curves_ch2.append(
+        autocorr_curve_ch2[curve_idx]
+    )
+selected_curves_ch2 = np.array(selected_curves_ch2)
+avg_curve_ch2 = np.mean(selected_curves_ch2, axis=0)
+std_curve_ch2 = np.std(selected_curves_ch2, axis=0)
+
+########################################################
 #  Save correlation curve
 ########################################################
-time_axis = avg_curve[0]
-avg_correlation_amplitude = avg_curve[1]
-suren_column = np.zeros_like(time_axis)
-std_avg_correlation_amplitude = std_curve[1]
-filename = 'test_full_2.cor'
+time_axis = avg_curve[0]  # calculates the correct time axis by multiplication of x-axis with macro_time
+time_axis_acf = avg_curve_ch1[0]
+avg_correlation_amplitude = avg_curve[1]  # 2nd column contains the average correlation amplitude calculated above
+avg_correlation_amplitude_ch1 = avg_curve_ch1[1]
+avg_correlation_amplitude_ch2 = avg_curve_ch2[1]
+suren_column = np.zeros_like(time_axis)  # fill 3rd column with 0's for compatibility with ChiSurf
+suren_column_acf = np.zeros_like(time_axis_acf)
+std_avg_correlation_amplitude = std_curve[1]/np.sqrt(len(selected_curves))
+std_avg_correlation_amplitude_ch1 = std_curve_ch1[1]/np.sqrt(len(selected_curves))
+std_avg_correlation_amplitude_ch2 = std_curve_ch2[1]/np.sqrt(len(selected_curves))
+# 4th column contains standard deviation from the average curve calculated above
+filename_cc = 'ch0_ch2_cross.cor'
 np.savetxt(
-    filename,
+    filename_cc,
     np.vstack(
         [
             time_axis,
@@ -332,8 +299,39 @@ np.savetxt(
     ).T,
     delimiter='\t'
 )
+
+filename_acf1 = 'ch0_auto.cor'
+np.savetxt(
+    filename_acf1,
+    np.vstack(
+        [
+            time_axis_acf,
+            avg_correlation_amplitude_ch1,
+            suren_column_acf,
+            std_avg_correlation_amplitude_ch1
+         ]
+    ).T,
+    delimiter='\t'
+)
+
+filename_acf2 = 'ch2_auto.cor'
+np.savetxt(
+    filename_acf2,
+    np.vstack(
+        [
+            time_axis_acf,
+            avg_correlation_amplitude_ch2,
+            suren_column_acf,
+            std_avg_correlation_amplitude_ch2
+         ]
+    ).T,
+    delimiter='\t'
+)
+
 print("Done.")
 p.semilogx(time_axis, avg_correlation_amplitude)
+p.semilogx(time_axis_acf, avg_correlation_amplitude_ch1)
+p.semilogx(time_axis_acf, avg_correlation_amplitude_ch2)
 p.show()
 
 # ########################################################
@@ -360,3 +358,69 @@ p.show()
 #     n_casc=25
 # )
 #
+# def select_by_half_height_time(
+#         correlation_amplitudes: typing.List[np.ndarray],
+#         number_of_stdev: float = 1.0
+# ) -> typing.List[int]:
+#     #  calculate mean of the first correlation points
+#     #  use these correlation points as the initial amplitude
+#     initial_amplitudes = np.mean(correlation_amplitudes[:, 5:30], axis=1)
+#     # get the baseline of the correlation amplitudes
+#     offsets = np.array(correlation_amplitudes[:, -1])
+#     # calculate the average between initial_amplitude and offset
+#
+#     # find the indices of half the initial amplitude searching
+#     # backwards from the offset to half the maximum
+#     i_half_max = list()
+#     for correlation_amplitude, initial_amplitude, offset in zip(
+#             correlation_amplitudes,
+#             initial_amplitudes,
+#             offsets
+#     ):
+#         imaxhalf = np.max(
+#             np.nonzero(
+#                 correlation_amplitude > (initial_amplitude - offset) / 2 + offset
+#             )
+#         )
+#         i_half_max.append(imaxhalf)
+#
+#     # calculate mean and stdev of i_half_max
+#     mean_half_max = np.mean(i_half_max)
+#     stdev_half_max = number_of_stdev * np.std(i_half_max)
+#
+#     # filter curves for those within 1 sigma
+#     selected_curves_idx = list()
+#     for i, hm in enumerate(i_half_max):
+#         if mean_half_max - stdev_half_max < hm < mean_half_max + stdev_half_max:
+#             selected_curves_idx.append(i)
+#     print("Total number of curves: ", len(i_half_max))
+#     print("Selected curves: ", len(selected_curves_idx))
+#     return selected_curves_idx
+
+
+# def fcs_weights(
+#         t: np.ndarray,
+#         g: np.ndarray,
+#         dur: float,
+#         cr: float
+# ):
+#     """
+#     :param t: correlation times [ms]
+#     :param g: correlation amplitude
+#     :param dur: measurement duration [s]
+#     :param cr: count-rate [kHz]
+#     """
+#     dt = np.diff(t)
+#     dt = np.hstack([dt, dt[-1]])
+#     ns = dur * 1000.0 / dt
+#     na = dt * cr
+#     syn = (t < 10) + (t >= 10) * 10 ** (-np.log(t + 1e-12) / np.log(10) + 1)
+#     b = np.mean(g[1:5]) - 1
+#     imaxhalf = np.min(np.nonzero(g < b / 2 + 1))
+#     tmaxhalf = t[imaxhalf]
+#     A = np.exp(-2 * dt / tmaxhalf)
+#     B = np.exp(-2 * t / tmaxhalf)
+#     m = t / dt
+#     S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b * np.sqrt(B)) / (ns * na * na)) * syn
+#     S = np.abs(S)
+#     return 1. / np.sqrt(S)

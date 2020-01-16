@@ -1,3 +1,5 @@
+# Copied from tttrlib webpage as starting point
+
 import pylab as p
 import tttrlib
 import numpy as np
