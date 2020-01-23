@@ -132,17 +132,18 @@ def select_by_deviation(
     print("Selecting indices of curves by deviations.")
     print("d_max:", d_max)
     print("Comparison time range:", comparison_start, "-", comparison_stop)
-    print("compared to the first 30 curves")
+    n = 5  # select the time range/nr of curves to which the similarity comparison should be made
+    print("compared to the first", n, "curves")
     if (comparison_start is None) or (comparison_stop is None):
         # calculates from every curve the difference to the mean of the first 30 curves, squares this value
         # and divides this value by the number of curves
         ds = np.mean(
-            (correlation_amplitudes - correlation_amplitudes[:30].mean(axis=0))**2.0, axis=1
+            (correlation_amplitudes - correlation_amplitudes[:n].mean(axis=0))**2.0, axis=1
         ) / len(correlation_amplitudes)
     else:
         ca = correlation_amplitudes[:, comparison_start: comparison_stop]
         ds = np.mean(
-            (ca - ca[:30].mean(axis=0)) ** 2.0, axis=1
+            (ca - ca[:n].mean(axis=0)) ** 2.0, axis=1
         ) / (comparison_stop - comparison_start)
     print(ds)
     logdev = np.log10(ds)  # better would be to use semilogy(x, ds), what would be x?
@@ -155,8 +156,29 @@ def select_by_deviation(
     print("Total number of curves: ", len(ds))
     print("Selected curves: ", len(selected_curves_idx))
     return selected_curves_idx
-    # return selected_curves_idx, return #  IndexError: arrays used as indices must be of integer (or boolean) type
+    # return selected_curves_idx, ds #  IndexError: arrays used as indices must be of integer (or boolean) type
 
+# based on the sliced timewindows the average countrate for each slice is calculated
+# input are the returned indices (list of arrays) from getting_idices_of_time_windows
+# count rate in counts per seconds is returned
+def calculate_countrate(
+        timewindows: typing.List[np.ndarray],
+        time_window_size_seconds: float = 2.0,
+) -> List[float]:
+    print("Calculating the average count rate...")
+    avg_count_rate = list()
+    index = 0
+    while index < len(timewindows):
+        nr_of_photons = len(timewindows[index])  # determines number of photons in a time slice
+        avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
+        avg_count_rate.append(avg_countrate)
+#        print(avg_countrate)
+        index += 1
+    return avg_count_rate
+
+########################################################
+#  Here the actual data input & optional selection process starts
+########################################################
 
 data = tttrlib.TTTR('1_20min_1.ptu', 'PTU')
 # rep rate = 80 MHz
@@ -165,7 +187,7 @@ macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
 micro_times = data.get_micro_time()
-time_window_size = 10.0  # time window size in seconds (overwrites selection above)
+time_window_size = 60.0  # time window size in seconds (overwrites selection above)
 micro_time_resolution = header.micro_time_resolution
 
 green_s_indices = data.get_selection_by_channel(np.array([0]))
@@ -194,6 +216,10 @@ correlation_curves_fine = correlate_pieces(
     n_casc=37
 )
 
+########################################################
+#  Option: get autocorrelation curves
+########################################################
+
 autocorr_curve_ch1 = correlate_pieces(
     macro_times=macro_times,
     indices_ch1=indices_ch1,
@@ -212,6 +238,19 @@ autocorr_curve_ch2 = correlate_pieces(
     micro_time_resolution=None,
     macro_time_clock=macro_time_calibration_ns,
     n_casc=25
+)
+
+########################################################
+#  Option: get average count rate per slice
+########################################################
+avg_countrate_ch1 = calculate_countrate(
+    timewindows=indices_ch1,
+    time_window_size_seconds=time_window_size
+)
+
+avg_countrate_ch2 = calculate_countrate(
+    timewindows=indices_ch2,
+    time_window_size_seconds=time_window_size
 )
 
 # comparison is only made for the crosscorrelation curves
@@ -234,7 +273,7 @@ average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
 # the selected values here encompass 1 ms -> 100 ms
 selected_curves_idx = select_by_deviation(
     correlation_amplitudes=correlation_amplitudes,
-    d_max=5e-5,  # selection criterion (overwrites the above value)
+    d_max=2e-6,  # selection criterion (overwrites the above value)
     comparison_start=220,
     comparison_stop=280
 )
@@ -286,7 +325,7 @@ std_avg_correlation_amplitude = std_curve[1]/np.sqrt(len(selected_curves))
 std_avg_correlation_amplitude_ch1 = std_curve_ch1[1]/np.sqrt(len(selected_curves))
 std_avg_correlation_amplitude_ch2 = std_curve_ch2[1]/np.sqrt(len(selected_curves))
 # 4th column contains standard deviation from the average curve calculated above
-filename_cc = 'ch0_ch2_cross.cor'
+filename_cc = '60s_ch0_ch2_cross.cor'  # change file name!
 np.savetxt(
     filename_cc,
     np.vstack(
@@ -300,7 +339,7 @@ np.savetxt(
     delimiter='\t'
 )
 
-filename_acf1 = 'ch0_auto.cor'
+filename_acf1 = '60s_ch0_auto.cor'  # change file name!
 np.savetxt(
     filename_acf1,
     np.vstack(
@@ -314,7 +353,7 @@ np.savetxt(
     delimiter='\t'
 )
 
-filename_acf2 = 'ch2_auto.cor'
+filename_acf2 = '60s_ch2_auto.cor'  # change file name!
 np.savetxt(
     filename_acf2,
     np.vstack(
@@ -328,14 +367,44 @@ np.savetxt(
     delimiter='\t'
 )
 
-print("Done.")
+########################################################
+#  Calculate steady-state anisotropy & save count rate per slice
+########################################################
+
+g_factor = 0.8
+total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
+parallel_channel = np.array(avg_countrate_ch2)
+perpendicular_channel = np.array(avg_countrate_ch1)
+rss = (parallel_channel - g_factor * perpendicular_channel)/(parallel_channel + 2 * g_factor * perpendicular_channel)
+
+filename = 'avg_countrate.txt'  # change file name!
+np.savetxt(
+    filename,
+    np.vstack(
+        [
+            total_countrate,
+            avg_countrate_ch1,
+            avg_countrate_ch2,
+            rss
+         ]
+    ).T,
+    delimiter='\t'
+)
+
+p.plot(avg_countrate_ch1)
+p.plot(avg_countrate_ch2)
+p.show()
+p.plot(rss)
+p.show()
+
 p.semilogx(time_axis, avg_correlation_amplitude)
 p.semilogx(time_axis_acf, avg_correlation_amplitude_ch1)
 p.semilogx(time_axis_acf, avg_correlation_amplitude_ch2)
 p.show()
 
+print("Done.")
 # ########################################################
-# #  Correlate again with photons of selected curves
+# #  Option: Correlate again with photons of selected curves
 # ########################################################
 #
 # # get indices of events which belong to selected curves

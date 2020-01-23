@@ -122,17 +122,18 @@ def select_by_deviation(
     print("Selecting indices of curves by deviations.")
     print("d_max:", d_max)
     print("Comparison time range:", comparison_start, "-", comparison_stop)
-    print("compared to the first 30 curves")
+    n = 30  # select the time range/nr of curves to which the similarity comparison should be made
+    print("compared to the first", n, "curves")
     if (comparison_start is None) or (comparison_stop is None):
         # calculates from every curve the difference to the mean of the first 30 curves, squares this value
         # and divides this value by the number of curves
         ds = np.mean(
-            (correlation_amplitudes - correlation_amplitudes[:30].mean(axis=0))**2.0, axis=1
+            (correlation_amplitudes - correlation_amplitudes[:n].mean(axis=0))**2.0, axis=1
         ) / len(correlation_amplitudes)
     else:
         ca = correlation_amplitudes[:, comparison_start: comparison_stop]
         ds = np.mean(
-            (ca - ca[:30].mean(axis=0)) ** 2.0, axis=1
+            (ca - ca[:n].mean(axis=0)) ** 2.0, axis=1
         ) / (comparison_stop - comparison_start)
     print(ds)
     logdev = np.log10(ds)
@@ -146,11 +147,30 @@ def select_by_deviation(
     print("Selected curves: ", len(selected_curves_idx))
     return selected_curves_idx
 
+# based on the sliced timewindows the average countrate for each slice is calculated
+# input are the returned indices (list of arrays) from getting_idices_of_time_windows
+# count rate in counts per seconds is returned
+
+def calculate_countrate(
+        timewindows: typing.List[np.ndarray],
+        time_window_size_seconds: float = 2.0,
+) -> List[float]:
+    print("Calculating the average count rate...")
+    avg_count_rate = list()
+    index = 0
+    while index < len(timewindows):
+        nr_of_photons = len(timewindows[index])  # determines number of photons in a time slice
+        avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
+        avg_count_rate.append(avg_countrate)
+#        print(avg_countrate)
+        index += 1
+    return avg_count_rate
+
 ########################################################
 #  Here the actual data input starts
 ########################################################
 
-data = tttrlib.TTTR('2_20min_2.ptu', 'PTU')
+data = tttrlib.TTTR('1_20min_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration = header.macro_time_resolution  # unit nanoseconds
@@ -192,6 +212,11 @@ selected_curves_idx = select_by_deviation(
     comparison_stop=180
 )
 
+avg_countrate_ch1 = calculate_countrate(
+    timewindows=indices_ch1,
+    time_window_size_seconds=time_window_size
+)
+
 ########################################################
 #  Average selected curves
 ########################################################
@@ -211,7 +236,7 @@ time_axis = avg_curve[0] * macro_time_calibration  # calculates the correct time
 avg_correlation_amplitude = avg_curve[1]  # 2nd column contains the average correlation amplitude calculated above
 suren_column = np.zeros_like(time_axis)  # fill 3rd column with 0's for compatibility with ChiSurf
 std_avg_correlation_amplitude = std_curve[1]  # 4th column contains standard deviation from the average curve calculated above
-filename = 'ch2_acf.cor'
+filename = 'ch2_acf.cor'  # change file name!
 np.savetxt(
     filename,
     np.vstack(
@@ -224,6 +249,20 @@ np.savetxt(
     ).T,
     delimiter='\t'
 )
-print("Done.")
+
+filename = 'avg_countrate.txt'
+np.savetxt(
+    filename,
+    np.vstack(
+        [
+            avg_countrate_ch1
+         ]
+    ).T,
+    delimiter='\t'
+)
+
+p.plot(avg_countrate_ch1)
+p.show()
 p.semilogx(time_axis, avg_correlation_amplitude)
 p.show()
+print("Done.")

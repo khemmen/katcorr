@@ -32,9 +32,10 @@ def get_indices_of_time_windows(
     :return:
     """
     print("Getting indices of time windows")
+    print("time windows size (sec):", time_window_size_seconds)
     time_window_size_idx = int(time_window_size_seconds / macro_time_calibration * 1000.0)
-    # time 1000 to bring macro_time_calibration from ms to sec
-    returned_indeces = list()
+    # times 1000 to bring macro_time_calibration from ms to sec
+    returned_indices = list()
     macro_time_start_idx = 0
     current_list = [macro_time_start_idx]
     macro_time_start = macro_times[macro_time_start_idx]
@@ -44,29 +45,29 @@ def get_indices_of_time_windows(
         dt = macro_time_current - macro_time_start
         if dt >= time_window_size_idx:
             macro_time_start = macro_time_current
-            returned_indeces.append(
+            returned_indices.append(
                 np.array(current_list)
             )
             current_list = [idx]
-    return returned_indeces
+    return returned_indices
 
-# Returned indices = indices_ch1/ch2 or a nested list/array
-# in total for this example it is an arrays of 129 array
-# the sub-array contain the ID of selected events
-# I need to count the number of these events and dvide by the size of my time slice in seconds
-# this will give me the average countrate for each slice in counts/sec
-# how to address getting the length of this subarray?
-
+# based on the sliced timewindows the average countrate for each slice is calculated
+# input are the returned indices (list of arrays) from getting_idices_of_time_windows
+# count rate in counts per seconds is returned
 def calculate_countrate(
-        start_stop_indices: np.ndarray,
+        timewindows: typing.List[np.ndarray],
         time_window_size_seconds: float = 2.0,
-):
-    print("Calculating the average countrate...")
-    avg_countrate = list()
-    for idx in start_stop_indices[1:]:
-        nr_of_photons = len(indices_ch1[:])
-        # nr_of_photons = tttrlib.get_n_events()
-        avg_countrate = nr_of_photons/time_window_size_seconds
+) -> List[float]:
+    print("Calculating the average count rate...")
+    avg_count_rate = list()
+    index = 0
+    while index < len(timewindows):
+        nr_of_photons = len(timewindows[index])  # determines number of photons in a time slice
+        avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
+        avg_count_rate.append(avg_countrate)
+#        print(avg_countrate)
+        index += 1
+    return avg_count_rate
 
 
 ########################################################
@@ -81,7 +82,7 @@ macro_time_calibration /= 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
 time_window_size = 5.0  # time window size in seconds (overwrites selection above)
 
-green_1_indices = data.get_selection_by_channel(np.array([2]))
+green_1_indices = data.get_selection_by_channel(np.array([0]))
 indices_ch1 = get_indices_of_time_windows(
     macro_times=macro_times,
     selected_indices=green_1_indices,
@@ -96,3 +97,40 @@ indices_ch2 = get_indices_of_time_windows(
     macro_time_calibration=macro_time_calibration,
     time_window_size_seconds=time_window_size
 )
+
+avg_countrate_ch1 = calculate_countrate(
+    timewindows=indices_ch1,
+    time_window_size_seconds=time_window_size
+)
+
+avg_countrate_ch2 = calculate_countrate(
+    timewindows=indices_ch2,
+    time_window_size_seconds=time_window_size
+)
+
+g_factor = 0.8
+total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
+parallel_channel = np.array(avg_countrate_ch2)
+perpendicular_channel = np.array(avg_countrate_ch1)
+rss = (parallel_channel - g_factor * perpendicular_channel)/(parallel_channel + 2 * g_factor * perpendicular_channel)
+
+filename = 'avg_countrate.txt'
+np.savetxt(
+    filename,
+    np.vstack(
+        [
+            total_countrate,
+            avg_countrate_ch1,
+            avg_countrate_ch2,
+            rss
+         ]
+    ).T,
+    delimiter='\t'
+)
+
+p.plot(avg_countrate_ch1)
+p.plot(avg_countrate_ch2)
+p.show()
+p.plot(rss)
+p.show()
+print("Done.")

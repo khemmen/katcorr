@@ -15,12 +15,12 @@ IndexError: arrays used as indices must be of integer (or boolean) type"
 -> possible to somehow save this curve-ids and give them to autocorrelation function?
 -> Caution: for ACF no microtime correlation is required, normal correlation is sufficient
 
-3) Calculation and saving of avg countrate per slice per channel
+3) Calculation and saving of avg countrate per slice per channel => done
 -> to be able to later calculate the brightness of molecules
 -> why per channel? dim vs bright molecules ~> oligomers ~> different anisotropy?
 
 4) log file
--> how can i get access to the many values on has to give?
+-> how can i get access to the many values one has to give?
 -> is it possible to collect all of them in a single file?
 -> Information which I would like to have: 
 	n_correlations (= nr of slices)
