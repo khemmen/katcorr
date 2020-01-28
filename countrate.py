@@ -11,7 +11,7 @@ import tttrlib
 @nb.jit(
     nopython=True
 )
-# Slices the full trace of the data into pieces of 2 seconds
+# Slices the full trace of the data into pieces of seconds
 # Determines and saves the event-ID of the "start" and "end" of these slices
 # change the number after time_window_size_seconds to slice data in larger pieces
 def get_indices_of_time_windows(
@@ -108,7 +108,7 @@ avg_countrate_ch2 = calculate_countrate(
     time_window_size_seconds=time_window_size
 )
 
-g_factor = 0.8
+g_factor = 0.8  # please change according to your setup calibration
 total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
 parallel_channel = np.array(avg_countrate_ch2)
 perpendicular_channel = np.array(avg_countrate_ch1)

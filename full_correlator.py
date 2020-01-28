@@ -6,6 +6,10 @@ import numba as nb
 import pylab as p
 import tttrlib
 
+########################################################
+#  Definition of required functions
+########################################################
+
 # jit = just in time compiler, compiles code before execution to speed up algorithm
 @nb.jit(
     nopython=True
@@ -33,7 +37,7 @@ def get_indices_of_time_windows(
     print("Getting indices of time windows")
     print("Time window size [sec]: ", time_window_size_seconds)
     time_window_size_idx = int(time_window_size_seconds / macro_time_calibration * 1000.0)
-    returned_indeces = list()
+    returned_indices = list()
     macro_time_start_idx = 0
     current_list = [macro_time_start_idx]
     macro_time_start = macro_times[macro_time_start_idx]
@@ -43,11 +47,11 @@ def get_indices_of_time_windows(
         dt = macro_time_current - macro_time_start
         if dt >= time_window_size_idx:
             macro_time_start = macro_time_current
-            returned_indeces.append(
+            returned_indices.append(
                 np.array(current_list)
             )
             current_list = [idx]
-    return returned_indeces
+    return returned_indices
 
 # correlation of the full trace
 def correlate(
@@ -123,43 +127,57 @@ def correlate_pieces(
     )
     return correlation_curves
 
-def select_by_deviation(
-        correlation_amplitudes: typing.List[np.ndarray],
-        d_max: float = 2e-5,
+# calculates for each curve the average within a certain time range
+# usually this time range (comparison_start, comparison_stop) encompasses the diffusion time range
+# the calculated value is compared to the mean of the first N curves
+def calculate_deviation(
+        correlation_amplitudes: np.ndarray,
         comparison_start: int = 220,
         comparison_stop: int = 280
-) -> typing.List[int]:
-    print("Selecting indices of curves by deviations.")
-    print("d_max:", d_max)
+) -> typing.List[float]:
+    print("Calculating deviations.")
     print("Comparison time range:", comparison_start, "-", comparison_stop)
+    deviation = list()
     n = 5  # select the time range/nr of curves to which the similarity comparison should be made
     print("compared to the first", n, "curves")
+    # calculates from every curve the difference to the mean of the first N curves, squares this value
+    # and divides this value by the number of curves
     if (comparison_start is None) or (comparison_stop is None):
-        # calculates from every curve the difference to the mean of the first 30 curves, squares this value
-        # and divides this value by the number of curves
         ds = np.mean(
             (correlation_amplitudes - correlation_amplitudes[:n].mean(axis=0))**2.0, axis=1
         ) / len(correlation_amplitudes)
+        deviation.append(ds)
     else:
         ca = correlation_amplitudes[:, comparison_start: comparison_stop]
         ds = np.mean(
             (ca - ca[:n].mean(axis=0)) ** 2.0, axis=1
         ) / (comparison_stop - comparison_start)
-    print(ds)
+        deviation.append(ds)
+    # print(ds)
     logdev = np.log10(ds)  # better would be to use semilogy(x, ds), what would be x?
     p.plot(logdev)
     p.show()
+    return deviation
+
+# based on the above calculated deviations from the mean of the first curves
+# now the curves which will be used for further analysis are selected
+# saved/returned are the indices of those selected curves
+def select_by_deviation(
+        deviations: typing.List[float],
+        d_max: float = 2e-5,
+) -> typing.List[int]:
+    print("Selecting indices of curves by deviations.")
+    devs = deviations[0]
     selected_curves_idx = list()
-    for i, d in enumerate(ds):
+    for i, d in enumerate(devs):
         if d < d_max:
             selected_curves_idx.append(i)
-    print("Total number of curves: ", len(ds))
+    print("Total number of curves: ", len(devs))
     print("Selected curves: ", len(selected_curves_idx))
     return selected_curves_idx
-    # return selected_curves_idx, ds #  IndexError: arrays used as indices must be of integer (or boolean) type
 
 # based on the sliced timewindows the average countrate for each slice is calculated
-# input are the returned indices (list of arrays) from getting_idices_of_time_windows
+# input are the returned indices (list of arrays) from getting_indices_of_time_windows
 # count rate in counts per seconds is returned
 def calculate_countrate(
         timewindows: typing.List[np.ndarray],
@@ -258,25 +276,30 @@ avg_countrate_ch2 = calculate_countrate(
 correlation_amplitudes = correlation_curves_fine[:, 1, :]
 average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
 
+# adjust comparison_start & stop according to your diffusion time
+# the selected values here encompass 1 ms -> 100 ms
+deviation_from_mean = calculate_deviation(
+    correlation_amplitudes=correlation_amplitudes,
+    comparison_start=220,
+    comparison_stop=280
+)
+
+# select the curves with a small enough deviation to be considered in the further analysis
+selected_curves_idx = select_by_deviation(
+    deviations=deviation_from_mean,
+    d_max=2e-5
+)
+
 # sort squared deviations (get the indices)
 # sorted_indices = np.argsort(d, axis=0)
-
 # curve_closest_to_mean = correlation_curves[sorted_indices[0], 0, :], correlation_curves[sorted_indices[0], 1, :]
 # curve_farstest_from_mean = correlation_curves[sorted_indices[-1], 0, :], correlation_curves[sorted_indices[-1], 1, :]
 
+# alternative selection
 # selected_curves_idx = select_by_half_height_time(
 #     correlation_amplitudes=correlation_amplitudes,
 #     number_of_stdev=0.2
 # )
-
-# adjust comparison_start & stop according to your diffusion time
-# the selected values here encompass 1 ms -> 100 ms
-selected_curves_idx = select_by_deviation(
-    correlation_amplitudes=correlation_amplitudes,
-    d_max=2e-6,  # selection criterion (overwrites the above value)
-    comparison_start=220,
-    comparison_stop=280
-)
 
 ########################################################
 #  Average selected curves
@@ -286,6 +309,7 @@ for curve_idx in selected_curves_idx:
     selected_curves.append(
         correlation_curves_fine[curve_idx]
     )
+
 selected_curves = np.array(selected_curves)
 avg_curve = np.mean(selected_curves, axis=0)
 std_curve = np.std(selected_curves, axis=0)
@@ -371,7 +395,7 @@ np.savetxt(
 #  Calculate steady-state anisotropy & save count rate per slice
 ########################################################
 
-g_factor = 0.8
+g_factor = 0.8  # please change according to your setup calibration
 total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
 parallel_channel = np.array(avg_countrate_ch2)
 perpendicular_channel = np.array(avg_countrate_ch1)
@@ -402,7 +426,24 @@ p.semilogx(time_axis_acf, avg_correlation_amplitude_ch1)
 p.semilogx(time_axis_acf, avg_correlation_amplitude_ch2)
 p.show()
 
+########################################################
+#  Save deviations
+########################################################
+deviations = np.array(deviation_from_mean)
+
+filename = 'deviations.txt'  # change file name!
+np.savetxt(
+    filename,
+    np.vstack(
+        [
+            deviations,
+         ]
+    ).T,
+    delimiter='\t'
+)
+
 print("Done.")
+
 # ########################################################
 # #  Option: Correlate again with photons of selected curves
 # ########################################################
@@ -427,6 +468,9 @@ print("Done.")
 #     n_casc=25
 # )
 #
+# ########################################################
+# #  Option: Select by half height instead of averaged diffusion part
+# ########################################################
 # def select_by_half_height_time(
 #         correlation_amplitudes: typing.List[np.ndarray],
 #         number_of_stdev: float = 1.0
@@ -466,7 +510,9 @@ print("Done.")
 #     print("Selected curves: ", len(selected_curves_idx))
 #     return selected_curves_idx
 
-
+# ########################################################
+# #  Option: Introduce weights while correlating
+# ########################################################
 # def fcs_weights(
 #         t: np.ndarray,
 #         g: np.ndarray,
@@ -490,6 +536,8 @@ print("Done.")
 #     A = np.exp(-2 * dt / tmaxhalf)
 #     B = np.exp(-2 * t / tmaxhalf)
 #     m = t / dt
+#     Suren-way of weighting (when compared to other methods of weighting this was advantageous)
+#     defined by try-and-error
 #     S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b * np.sqrt(B)) / (ns * na * na)) * syn
 #     S = np.abs(S)
 #     return 1. / np.sqrt(S)
