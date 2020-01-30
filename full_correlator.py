@@ -11,9 +11,7 @@ import tttrlib
 ########################################################
 
 # jit = just in time compiler, compiles code before execution to speed up algorithm
-@nb.jit(
-    nopython=True
-)
+@nb.jit(nopython=True)
 def get_indices_of_time_windows(
         macro_times: np.ndarray,
         selected_indices: np.ndarray,
@@ -23,6 +21,8 @@ def get_indices_of_time_windows(
     """Determines a list of start and stop indices for a TTTR object with
     selected indices and that correspond to the indices of the start and stop
     of time-windows.
+    - Slices the full trace of the data into pieces of seconds
+    - change the number after time_window_size_seconds to slice data in larger pieces
 
     By default slices the full trace of the data into pieces of 2 seconds
     Determines and saves the event-ID of the "start" and "end" of these slices
@@ -33,7 +33,7 @@ def get_indices_of_time_windows(
     :param selected_indices: A preselected list of indices that defines which events
     in the TTTR event stream are considered
     :param time_window_size_seconds: The size of the time windows
-    :return:
+    :return: list of arrays, where each array contains the indices of detection events for a time window
     """
     print("Getting indices of time windows")
     print("Time window size [sec]: ", time_window_size_seconds)
@@ -65,20 +65,17 @@ def correlate(
         micro_time_resolution: float = None,
         macro_time_clock: float = None
 ) -> (np.ndarray, np.ndarray):
-    """ correlation of the full trace
+    """actual correlator
 
-    B and n_casc define the spacing of the logarithmic correlation axis
-    increase n_casc if you need to correlate to longer time intervals
-
-    :param macro_times: array of macro times
-    :param indices_ch1:
-    :param indices_ch2:
-    :param B: number of correlation points in a cascade
-    :param n_casc: number of cascades
-    :param micro_times: array of micro times
-    :param micro_time_resolution:
-    :param macro_time_clock:
-    :return: tuple containing the time-axis and the correlation amplitude
+    :param macro_times: numpy array of macro times
+    :param indices_ch1: numpy array of indices based on the selected indices for the first channel
+    :param indices_ch2: numpy array of indices based on the selected indices for the second channel
+    :param B: Base of the logarithmic correlation axis
+    :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
+    :param micro_times: numpy array of micro times
+    :param micro_time_resolution: micro time resolution in ns
+    :param macro_time_clock: macro time clock in in ns
+    :return: tuple of two arrays (time, correlation amplitude)
     """
     # macro_time_clock in nanoseconds
     if micro_times is not None:
@@ -107,7 +104,6 @@ def correlate(
     # p.show()
     return t, y
 
-
 def correlate_pieces(
         macro_times: np.ndarray,
         indices_ch1: typing.List[np.ndarray],
@@ -118,19 +114,16 @@ def correlate_pieces(
         micro_time_resolution: float = None,
         macro_time_clock: float = None
 ) -> np.ndarray:
-    """
-    correlation of the pieces
+    """ times slices are selected one after another based on the selected indices
+        and then transferred to the correlator
 
-    :param macro_times: array of macro times
-    :param indices_ch1:
-    :param indices_ch2:
-    :param B: number of correlation points in a cascade
-    :param n_casc: number of cascades
-    :param micro_times: array of micro times
-    :param micro_time_resolution: time resolution of the micro time counter
-    :param macro_time_clock: time resolution of the macro time counter
-    :return: a 2D numpy array that contains the correlation curves
-    """
+        :param macro_times: numpy array of macro times
+        :param indices_ch1: numpy array of indices based on the selected indices for the first channel
+        :param indices_ch2: numpy array of indices based on the selected indices for the second channel
+        :param B: Base of the logarithmic correlation axis
+        :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
+        :return: array of correlation curves (y-values), which are then transferred to the correlator
+        """
     print("Correlating pieces...")
     n_correlations = min(len(indices_ch1), len(indices_ch2))
     # returns nr of slices, minimum of ch1 or ch2 is reported in case they have different size
@@ -160,18 +153,17 @@ def calculate_deviation(
         comparison_start: int = 220,
         comparison_stop: int = 280
 ) -> typing.List[float]:
-    """
+    """Determines the similarity of the individual curves towards the first n curves
+        The values of each correlation amplitude are averaged over a time
+        range defined by start and stop. This time range usually encompasses
+        the diffusion time, i.e. is sample-specific. The calculated average is
+        compared to the mean of the first n curves.
 
-    calculates for each curve the average within a certain time range
-    usually this time range (comparison_start, comparison_stop) encompasses
-    the diffusion time range the calculated value is compared to the mean of
-    the first N curves
-
-    :param correlation_amplitudes:
-    :param comparison_start:
-    :param comparison_stop:
-    :return:
-    """
+        :param correlation_amplitudes: array of correlation amplitudes
+        :param comparison_start: index within the array of correlation amplitude which marks the start of comparison range
+        :param comparison_stop: index within the array of correlation amplitude which marks the end of comparison range
+        :return: list of deviations calculated as difference to the starting amplitudes
+        """
     print("Calculating deviations.")
     print("Comparison time range:", comparison_start, "-", comparison_stop)
     deviation = list()
@@ -191,7 +183,7 @@ def calculate_deviation(
         ) / (comparison_stop - comparison_start)
         deviation.append(ds)
     # print(ds)
-    logdev = np.log10(ds)  # better would be to use semilogy(x, ds), what would be x?
+    logdev = np.log10(ds)
     p.plot(logdev)
     p.show()
     return deviation
@@ -201,14 +193,16 @@ def select_by_deviation(
         deviations: typing.List[float],
         d_max: float = 2e-5,
 ) -> typing.List[int]:
-    """
+    """ The single correlated time windows are now selected for further analysis based on their deviation
+    to the first n curves
+
     based on the above calculated deviations from the mean of the first curves
     now the curves which will be used for further analysis are selected
     saved/returned are the indices of those selected curves
 
-    :param deviations:
-    :param d_max:
-    :return:
+    :param deviations: list of deviations, calculated in the calculate_deviation function
+    :param d_max: threshold, all curves which have a deviation value smaller than this are selected for further analysis
+    :return: list of indices, the indices corresponds to the curves' number/time window
     """
     print("Selecting indices of curves by deviations.")
     devs = deviations[0]
@@ -225,15 +219,15 @@ def calculate_countrate(
         timewindows: typing.List[np.ndarray],
         time_window_size_seconds: float = 2.0,
 ) -> typing.List[float]:
-    """
-    based on the sliced timewindows the average countrate for each slice is calculated
+    """based on the sliced timewindows the average countrate for each slice is calculated.
+
     input are the returned indices (list of arrays) from getting_indices_of_time_windows
     count rate in counts per seconds is returned
 
-    :param timewindows:
-    :param time_window_size_seconds:
-    :return:
-    """
+        :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
+        :param time_window_size_seconds: The size of the time windows
+        :return: list of average countrate (counts/sec) for the individual time windows
+        """
     print("Calculating the average count rate...")
     avg_count_rate = list()
     index = 0
@@ -244,7 +238,6 @@ def calculate_countrate(
 #        print(avg_countrate)
         index += 1
     return avg_count_rate
-
 
 ########################################################
 #  Here the actual data input & optional selection process starts
