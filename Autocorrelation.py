@@ -14,9 +14,7 @@ import tttrlib
 @nb.jit(
     nopython=True
 )
-# Slices the full trace of the data into pieces of 2 seconds
-# Determines and saves the event-ID of the "start" and "end" of these slices
-# change the number after time_window_size_seconds to slice data in larger pieces
+
 def get_indices_of_time_windows(
         macro_times: np.ndarray,
         selected_indices: np.ndarray,
@@ -26,13 +24,14 @@ def get_indices_of_time_windows(
     """Determines a list of start and stop indices for a TTTR object with
     selected indices and that correspond to the indices of the start and stop
     of time-windows.
-
+    - Slices the full trace of the data into pieces of seconds
+    - change the number after time_window_size_seconds to slice data in larger pieces
     :param macro_times: numpy array of macro times
     :param macro_time_calibration: the macro time clock in milliseconds
     :param selected_indices: A preselected list of indices that defines which events
     in the TTTR event stream are considered
     :param time_window_size_seconds: The size of the time windows
-    :return:
+    :return: list of arrays, where each array contains the indices of detection events for a time window
     """
     print("Getting indices of time windows")
     print("Time window size [sec]: ", time_window_size_seconds)
@@ -54,16 +53,23 @@ def get_indices_of_time_windows(
             current_list = [idx]
     return returned_indices
 
-# correlation of the full trace
+
 def correlate(
         macro_times: np.ndarray,
         indices_ch1: np.ndarray,
         indices_ch2: np.ndarray,
         B: int = 9,
         n_casc: int = 25
-        # B and n_casc define the spacing of the logarithmic correlation axis
-        # increase n_casc if you need to correlate to longer time intervals
 ) -> (np.ndarray, np.ndarray):
+    """ actual correlator
+
+        :param macro_times: numpy array of macro times
+        :param indices_ch1: numpy array of indices based on the selected indices for the first channel
+        :param indices_ch2: numpy array of indices based on the selected indices for the second channel
+        :param B: Base of the logarithmic correlation axis
+        :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
+        :return: list of two arrays (time, correlation amplitude)
+        """
     # Create correlator
     mt = macro_times
     correlator = tttrlib.Correlator()
@@ -82,7 +88,6 @@ def correlate(
     y = correlator.get_corr_normalized()
     return x, y
 
-# correlation of the 10 sec-pieces
 def correlate_pieces(
         macro_times: np.ndarray,
         indices_ch1: typing.List[np.ndarray],
@@ -90,6 +95,16 @@ def correlate_pieces(
         B: int = 9,
         n_casc: int = 25
 ) -> np.ndarray:
+    """ times slices are selected one after another based on the selected indices
+        and then transferred to the correlator
+
+        :param macro_times: numpy array of macro times
+        :param indices_ch1: numpy array of indices based on the selected indices for the first channel
+        :param indices_ch2: numpy array of indices based on the selected indices for the second channel
+        :param B: Base of the logarithmic correlation axis
+        :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
+        :return: array of correlation curves (y-values), which are then transferred to the correlator
+        """
     print("Correlating pieces...")
     n_correlations = (len(indices_ch1))
     correlation_curves = list()
@@ -109,14 +124,21 @@ def correlate_pieces(
     )
     return correlation_curves
 
-# calculates for each curve the average within a certain time range
-# usually this time range (comparison_start, comparison_stop) encompasses the diffusion time range
-# the calculated value is compared to the mean of the first N curves
 def calculate_deviation(
         correlation_amplitudes: np.ndarray,
         comparison_start: int = 120,
         comparison_stop: int = 180
 ) -> typing.List[float]:
+    """Determines the similarity of the individual curves towards the first n curves
+        The values of each correlation amplitude are averaged over a time range defined by start and stop
+        This time range usually encompasses the diffusion time, i.e. is sample-specific
+        The calculated average is compared to the mean of the first n curves
+
+        :param correlation_amplitudes: array of correlation amplitudes
+        :param comparison_start: index within the array of correlation amplitude which marks the start of comparison range
+        :param comparison_stop: index within the array of correlation amplitude which marks the end of comparison range
+        :return: list of deviations calculated as difference to the starting amplitudes
+        """
     print("Calculating deviations.")
     print("Comparison time range:", comparison_start, "-", comparison_stop)
     deviation = list()
@@ -136,18 +158,22 @@ def calculate_deviation(
         ) / (comparison_stop - comparison_start)
         deviation.append(ds)
     # print(ds)
-    logdev = np.log10(ds)  # better would be to use semilogy(x, ds), what would be x?
+    logdev = np.log10(ds)
     p.plot(logdev)
     p.show()
     return deviation
 
-# based on the above calculated deviations from the mean of the first curves
-# now the curves which will be used for further analysis are selected
-# saved/returned are the indices of those selected curves
 def select_by_deviation(
         deviations: typing.List[float],
         d_max: float = 2e-5,
 ) -> typing.List[int]:
+    """ The single correlated time windows are now selected for further analysis based on their deviation
+        to the first n curves
+
+        :param deviations: list of deviations, calculated in the calculate_deviation function
+        :param d_max: threshold, all curves which have a deviation value smaller than this are selected for further analysis
+        :return: list of indices, the indices corresponds to the curves' number/time window
+        """
     print("Selecting indices of curves by deviations.")
     devs = deviations[0]
     selected_curves_idx = list()
@@ -158,13 +184,16 @@ def select_by_deviation(
     print("Selected curves: ", len(selected_curves_idx))
     return selected_curves_idx
 
-# based on the sliced timewindows the average countrate for each slice is calculated
-# input are the returned indices (list of arrays) from getting_idices_of_time_windows
-# count rate in counts per seconds is returned
 def calculate_countrate(
         timewindows: typing.List[np.ndarray],
         time_window_size_seconds: float = 2.0,
 ) -> List[float]:
+    """based on the sliced timewindows the average countrate for each slice is calculated
+
+        :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
+        :param time_window_size_seconds: The size of the time windows
+        :return: list of average countrate (counts/sec) for the individual time windows
+        """
     print("Calculating the average count rate...")
     avg_count_rate = list()
     index = 0

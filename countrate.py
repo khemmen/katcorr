@@ -11,9 +11,7 @@ import tttrlib
 @nb.jit(
     nopython=True
 )
-# Slices the full trace of the data into pieces of seconds
-# Determines and saves the event-ID of the "start" and "end" of these slices
-# change the number after time_window_size_seconds to slice data in larger pieces
+
 def get_indices_of_time_windows(
         macro_times: np.ndarray,
         selected_indices: np.ndarray,
@@ -22,14 +20,15 @@ def get_indices_of_time_windows(
 ) -> typing.List[np.ndarray]:
     """Determines a list of start and stop indices for a TTTR object with
     selected indices and that correspond to the indices of the start and stop
-    of time-windows.
-
+    of time-windows:
+    - Slices the full trace of the data into pieces of seconds
+    - change the number after time_window_size_seconds to slice data in larger pieces
     :param macro_times: numpy array of macro times
     :param macro_time_calibration: the macro time clock in milliseconds
     :param selected_indices: A preselected list of indices that defines which events
     in the TTTR event stream are considered
     :param time_window_size_seconds: The size of the time windows
-    :return:
+    :return: list of arrays, where each array contains the indices of detection events for a time window
     """
     print("Getting indices of time windows")
     print("time windows size (sec):", time_window_size_seconds)
@@ -51,13 +50,16 @@ def get_indices_of_time_windows(
             current_list = [idx]
     return returned_indices
 
-# based on the sliced timewindows the average countrate for each slice is calculated
-# input are the returned indices (list of arrays) from getting_idices_of_time_windows
-# count rate in counts per seconds is returned
 def calculate_countrate(
         timewindows: typing.List[np.ndarray],
         time_window_size_seconds: float = 2.0,
 ) -> List[float]:
+    """based on the sliced timewindows the average countrate for each slice is calculated
+
+    :param timewindows: list of arrays, the indices which have been returned from getting_indices_of_time_windows
+    :param time_window_size_seconds: The size of the time windows
+    :return: list of count rate in counts per seconds
+    """
     print("Calculating the average count rate...")
     avg_count_rate = list()
     index = 0
