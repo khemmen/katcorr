@@ -6,6 +6,7 @@ import numba as nb
 import pylab as p
 import tttrlib
 
+
 ########################################################
 #  Definition of required functions
 ########################################################
@@ -104,6 +105,7 @@ def correlate(
     # p.show()
     return t, y
 
+
 def correlate_pieces(
         macro_times: np.ndarray,
         indices_ch1: typing.List[np.ndarray],
@@ -115,15 +117,15 @@ def correlate_pieces(
         macro_time_clock: float = None
 ) -> np.ndarray:
     """ times slices are selected one after another based on the selected indices
-        and then transferred to the correlator
+    and then transferred to the correlator
 
-        :param macro_times: numpy array of macro times
-        :param indices_ch1: numpy array of indices based on the selected indices for the first channel
-        :param indices_ch2: numpy array of indices based on the selected indices for the second channel
-        :param B: Base of the logarithmic correlation axis
-        :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
-        :return: array of correlation curves (y-values), which are then transferred to the correlator
-        """
+    :param macro_times: numpy array of macro times
+    :param indices_ch1: numpy array of indices based on the selected indices for the first channel
+    :param indices_ch2: numpy array of indices based on the selected indices for the second channel
+    :param B: Base of the logarithmic correlation axis
+    :param n_casc: nr of cascades of the logarithmic time axis, increase for longer correlation times
+    :return: array of correlation curves (y-values), which are then transferred to the correlator
+    """
     print("Correlating pieces...")
     n_correlations = min(len(indices_ch1), len(indices_ch2))
     # returns nr of slices, minimum of ch1 or ch2 is reported in case they have different size
@@ -154,16 +156,17 @@ def calculate_deviation(
         comparison_stop: int = 280
 ) -> typing.List[float]:
     """Determines the similarity of the individual curves towards the first n curves
-        The values of each correlation amplitude are averaged over a time
-        range defined by start and stop. This time range usually encompasses
-        the diffusion time, i.e. is sample-specific. The calculated average is
-        compared to the mean of the first n curves.
+    The values of each correlation amplitude are averaged over a time
+    range defined by start and stop. This time range usually encompasses
+    the diffusion time, i.e. is sample-specific. The calculated average is
+    compared to the mean of the first n curves.
 
-        :param correlation_amplitudes: array of correlation amplitudes
-        :param comparison_start: index within the array of correlation amplitude which marks the start of comparison range
-        :param comparison_stop: index within the array of correlation amplitude which marks the end of comparison range
-        :return: list of deviations calculated as difference to the starting amplitudes
-        """
+    :param correlation_amplitudes: array of correlation amplitudes
+    :param comparison_start: index within the array of correlation amplitude which marks the start of comparison
+    range
+    :param comparison_stop: index within the array of correlation amplitude which marks the end of comparison range
+    :return: list of deviations calculated as difference to the starting amplitudes
+    """
     print("Calculating deviations.")
     print("Comparison time range:", comparison_start, "-", comparison_stop)
     deviation = list()
@@ -173,7 +176,7 @@ def calculate_deviation(
     # and divides this value by the number of curves
     if (comparison_start is None) or (comparison_stop is None):
         ds = np.mean(
-            (correlation_amplitudes - correlation_amplitudes[:n].mean(axis=0))**2.0, axis=1
+            (correlation_amplitudes - correlation_amplitudes[:n].mean(axis=0)) ** 2.0, axis=1
         ) / len(correlation_amplitudes)
         deviation.append(ds)
     else:
@@ -224,10 +227,11 @@ def calculate_countrate(
     input are the returned indices (list of arrays) from getting_indices_of_time_windows
     count rate in counts per seconds is returned
 
-        :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
-        :param time_window_size_seconds: The size of the time windows
-        :return: list of average countrate (counts/sec) for the individual time windows
-        """
+    :param timewindows: list of numpy arrays, the indices which have been returned from
+    getting_indices_of_time_windows
+    :param time_window_size_seconds: The size of the time windows
+    :return: list of average countrate (counts/sec) for the individual time windows
+    """
     print("Calculating the average count rate...")
     avg_count_rate = list()
     index = 0
@@ -235,9 +239,10 @@ def calculate_countrate(
         nr_of_photons = len(timewindows[index])  # determines number of photons in a time slice
         avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
         avg_count_rate.append(avg_countrate)
-#        print(avg_countrate)
+        #        print(avg_countrate)
         index += 1
     return avg_count_rate
+
 
 ########################################################
 #  Here the actual data input & optional selection process starts
@@ -390,9 +395,9 @@ avg_correlation_amplitude_ch1 = avg_curve_ch1[1]
 avg_correlation_amplitude_ch2 = avg_curve_ch2[1]
 suren_column = np.zeros_like(time_axis)  # fill 3rd column with 0's for compatibility with ChiSurf
 suren_column_acf = np.zeros_like(time_axis_acf)
-std_avg_correlation_amplitude = std_curve[1]/np.sqrt(len(selected_curves))
-std_avg_correlation_amplitude_ch1 = std_curve_ch1[1]/np.sqrt(len(selected_curves))
-std_avg_correlation_amplitude_ch2 = std_curve_ch2[1]/np.sqrt(len(selected_curves))
+std_avg_correlation_amplitude = std_curve[1] / np.sqrt(len(selected_curves))
+std_avg_correlation_amplitude_ch1 = std_curve_ch1[1] / np.sqrt(len(selected_curves))
+std_avg_correlation_amplitude_ch2 = std_curve_ch2[1] / np.sqrt(len(selected_curves))
 # 4th column contains standard deviation from the average curve calculated above
 filename_cc = '60s_ch0_ch2_cross.cor'  # change file name!
 np.savetxt(
@@ -403,7 +408,7 @@ np.savetxt(
             average_correlation_amplitude,
             suren_column,
             std_avg_correlation_amplitude
-         ]
+        ]
     ).T,
     delimiter='\t'
 )
@@ -417,7 +422,7 @@ np.savetxt(
             avg_correlation_amplitude_ch1,
             suren_column_acf,
             std_avg_correlation_amplitude_ch1
-         ]
+        ]
     ).T,
     delimiter='\t'
 )
@@ -431,7 +436,7 @@ np.savetxt(
             avg_correlation_amplitude_ch2,
             suren_column_acf,
             std_avg_correlation_amplitude_ch2
-         ]
+        ]
     ).T,
     delimiter='\t'
 )
@@ -444,7 +449,7 @@ g_factor = 0.8  # please change according to your setup calibration
 total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
 parallel_channel = np.array(avg_countrate_ch2)
 perpendicular_channel = np.array(avg_countrate_ch1)
-rss = (parallel_channel - g_factor * perpendicular_channel)/(parallel_channel + 2 * g_factor * perpendicular_channel)
+rss = (parallel_channel - g_factor * perpendicular_channel) / (parallel_channel + 2 * g_factor * perpendicular_channel)
 
 filename = 'avg_countrate.txt'  # change file name!
 np.savetxt(
@@ -455,7 +460,7 @@ np.savetxt(
             avg_countrate_ch1,
             avg_countrate_ch2,
             rss
-         ]
+        ]
     ).T,
     delimiter='\t'
 )
@@ -482,7 +487,7 @@ np.savetxt(
     np.vstack(
         [
             deviations,
-         ]
+        ]
     ).T,
     delimiter='\t'
 )
@@ -583,6 +588,7 @@ print("Done.")
 #     m = t / dt
 #     Suren-way of weighting (when compared to other methods of weighting this was advantageous)
 #     defined by try-and-error
-#     S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b * np.sqrt(B)) / (ns * na * na)) * syn
+#     S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b *
+#     np.sqrt(B)) / (ns * na * na)) * syn
 #     S = np.abs(S)
 #     return 1. / np.sqrt(S)
