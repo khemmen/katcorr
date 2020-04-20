@@ -7,23 +7,22 @@ import numpy as np
 import pylab as p
 import tttrlib
 import functions
-import functionsPIE
 
 ########################################################
 #  Here the actual data input starts
 ########################################################
 
-data = tttrlib.TTTR('C:/Users/Katherina/Documents/RVZ/b2ADR_cwFCS/2019-07-29_eGFP-b2AR_cw_AB.sptw/A488_1.ptu', 'PTU')
+data = tttrlib.TTTR('A488_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration /= 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
-time_window_size = 5.0  # time window size in seconds (overwrites selection above)
+time_window_size = 5.0  # time window size in seconds
 
 # the dtype to int64 otherwise numba jit has hiccups
 green_1_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
-indices_ch1 = functionsPIE.get_indices_of_time_windows(
+indices_ch1 = functions.get_indices_of_time_windows(
     macro_times=macro_times,
     selected_indices=green_1_indices,
     macro_time_calibration=macro_time_calibration,
