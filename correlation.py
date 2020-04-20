@@ -9,13 +9,13 @@ import functions
 #  Data input & optional selection process
 ########################################################
 
-data = tttrlib.TTTR('C:/Users/Katherina/Documents/RVZ/b2ADR_cwFCS/2019-07-29_eGFP-b2AR_cw_AB.sptw/A488_1.ptu', 'PTU')
+data = tttrlib.TTTR('A488_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
-time_window_size = 2.0  # time window size in seconds (overwrites selection above)
+time_window_size = 2.0  # time window size in seconds
 print("macro_time_calibration_ns:", macro_time_calibration_ns)
 print("macro_time_calibration_ms:", macro_time_calibration_ms)
 print("time_window_size:", time_window_size)
