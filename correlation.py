@@ -9,7 +9,7 @@ import functions
 #  Data input & optional selection process
 ########################################################
 
-data = tttrlib.TTTR('C:/Users/Katherina/Documents/RVZ/b2ADR_cwFCS/2019-07-29_eGFP-b2AR_cw_AB.sptw/A488_1.ptu', 'PTU')
+data = tttrlib.TTTR('A488_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds

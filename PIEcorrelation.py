@@ -10,7 +10,7 @@ import functions
 #  Data input & optional selection process
 ########################################################
 
-data = tttrlib.TTTR('D:/Julius_PIE/20200317_oil obj_cal.sptw/A4+5_10bp/A4+5-10bp1.ptu', 'PTU')
+data = tttrlib.TTTR('A4+5-10bpPIE.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
@@ -164,6 +164,33 @@ avg_curve_ch2 = np.mean(selected_curves_ch2, axis=0)
 std_curve_ch2 = np.std(selected_curves_ch2, axis=0)
 
 ########################################################
+#  Calculate average count rates
+########################################################
+
+avg_cr_prompt_green = functionsPIE.calculate_cr_prompt(
+    timewindows=indices_ch1,
+    time_window_size_seconds=time_window_size,
+    micro_times=micro_times,
+    macro_times=macro_times,
+    PIE_windows_bins=PIE_windows_bins
+)
+
+avg_cr_prompt_red = functionsPIE.calculate_cr_prompt(
+    timewindows=indices_ch2,
+    time_window_size_seconds=time_window_size,
+    micro_times=micro_times,
+    macro_times=macro_times,
+    PIE_windows_bins=PIE_windows_bins
+)
+
+avg_cr_delay_red = functionsPIE.calculate_cr_delay(
+    timewindows=indices_ch2,
+    time_window_size_seconds=time_window_size,
+    micro_times=micro_times,
+    macro_times=macro_times,
+    PIE_windows_bins=PIE_windows_bins
+)
+########################################################
 #  Save correlation curve
 ########################################################
 time_axis = avg_curve[0] * macro_time_calibration_ms
@@ -239,5 +266,28 @@ p.semilogx(time_axis, avg_correlation_amplitude)  # blue cure
 p.semilogx(time_axis, avg_correlation_amplitude_ch2)  # green curve
 p.semilogx(time_axis, avg_correlation_amplitude_ch1)  # orange curve
 p.show()
+
+########################################################
+#  Save average countrates
+########################################################
+
+filename_avg_cr = 'avg_countrates.cor'  # change file name!
+np.savetxt(
+    filename_avg_cr,
+    np.vstack(
+        [
+            avg_cr_prompt_green,
+            avg_cr_prompt_red,
+            avg_cr_delay_red
+         ]
+    ).T,
+    delimiter='\t'
+)
+
+p.plot(avg_cr_prompt_red)  # blue cure
+p.plot(avg_cr_prompt_green)  # green curve
+p.plot(avg_cr_delay_red)  # orange curve
+p.show()
+
 
 print("Done.")
