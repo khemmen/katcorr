@@ -16,7 +16,7 @@ macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
 micro_times = data.get_micro_time()
-time_window_size = 10.0  # time window size in seconds (overwrites selection above)
+time_window_size = 1.0  # time window size in seconds
 micro_time_resolution = header.micro_time_resolution
 
 # the dtype to int64 otherwise numba jit has hiccups

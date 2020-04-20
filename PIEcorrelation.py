@@ -18,7 +18,7 @@ macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibr
 micro_time_resolution = header.micro_time_resolution
 macro_times = data.get_macro_time()
 micro_times = data.get_micro_time()
-time_window_size = 1.0  # time window size in seconds (overwrites selection above)
+time_window_size = 1.0  # time window size in seconds
 number_of_bins = macro_time_calibration_ns/micro_time_resolution
 PIE_windows_bins = int(number_of_bins/2)
 

@@ -17,7 +17,7 @@ header = data.get_header()
 macro_time_calibration = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration /= 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
-time_window_size = 5.0  # time window size in seconds (overwrites selection above)
+time_window_size = 1.0  # time window size in seconds
 
 green_1_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
 indices_ch1 = functions.get_indices_of_time_windows(

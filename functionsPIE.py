@@ -277,10 +277,10 @@ def calculate_cr_prompt(
         PIE_windows_bins: int = 12500
 ) -> typing.List[float]:
     """based on the sliced timewindows the average countrate for each slice is calculated
+    :param micro_times: numpy array of microtimes
+    :param macro_times: numpy array of macrotimes
     :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
     :param time_window_size_seconds: The size of the time windows
-    :param micro_times: numpy array of microtimes
-    :param indices_ch2: numpy array of indices based on the selected indices for the second channel
     :param PIE_windows_bins: number of histogram time bins belonging to each prompt & delay half
     :return: list of average countrate (counts/sec) for the individual time windows
     """
@@ -307,10 +307,10 @@ def calculate_cr_delay(
         PIE_windows_bins: int = 12500
 ) -> typing.List[float]:
     """based on the sliced timewindows the average countrate for each slice is calculated
+    :param micro_times: numpy array of microtimes
+    :param micro_times: numpy array of microtimes
     :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
     :param time_window_size_seconds: The size of the time windows
-    :param micro_times: numpy array of microtimes
-    :param indices_ch2: numpy array of indices based on the selected indices for the second channel
     :param PIE_windows_bins: number of histogram time bins belonging to each prompt & delay half
     :return: list of average countrate (counts/sec) for the individual time windows
     """

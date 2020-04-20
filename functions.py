@@ -210,7 +210,7 @@ def calculate_countrate(
 ) -> typing.List[float]:
     """based on the sliced timewindows the average countrate for each slice is calculated
     :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
-    :param time_window_size_seconds: The size of the time windows
+    :param time_window_size_seconds: The size of the time windows in seconds
     :return: list of average countrate (counts/sec) for the individual time windows
     """
     print("Calculating the average count rate...")
