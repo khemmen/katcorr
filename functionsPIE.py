@@ -268,3 +268,68 @@ def correlate_pieces_delay(
         correlation_curves
     )
     return correlation_curves
+
+
+#####################################################################
+#  Definition of required functions to calculate countrate for prompt & delay
+#####################################################################
+
+
+def calculate_cr_prompt(
+        micro_times: np.ndarray,
+        macro_times: np.ndarray,
+        timewindows: typing.List[np.ndarray],
+        time_window_size_seconds: float = 2.0,
+        PIE_windows_bins: int = 12500
+) -> typing.List[float]:
+    """based on the sliced timewindows the average countrate for each slice is calculated
+    :param micro_times: numpy array of microtimes
+    :param macro_times: numpy array of macrotimes
+    :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
+    :param time_window_size_seconds: The size of the time windows
+    :param PIE_windows_bins: number of histogram time bins belonging to each prompt & delay half
+    :return: list of average countrate (counts/sec) for the individual time windows
+    """
+    print("Calculating the average count rate...")
+    avg_count_rate = list()
+    index = 0
+    while index < len(timewindows):
+        t = macro_times[timewindows[index]]
+        mt = micro_times[timewindows[index]]
+        w = np.ones_like(t, dtype=np.float)
+        w[np.where(mt > PIE_windows_bins)] *= 0.0
+        nr_of_photons = sum(w)  # determines number of photons in a time slice
+        avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
+        avg_count_rate.append(avg_countrate)
+        index += 1
+    return avg_count_rate
+
+
+def calculate_cr_delay(
+        micro_times: np.ndarray,
+        macro_times: np.ndarray,
+        timewindows: typing.List[np.ndarray],
+        time_window_size_seconds: float = 2.0,
+        PIE_windows_bins: int = 12500
+) -> typing.List[float]:
+    """based on the sliced timewindows the average countrate for each slice is calculated
+    :param micro_times: numpy array of microtimes
+    :param micro_times: numpy array of microtimes
+    :param timewindows: list of numpy arrays, the indices which have been returned from getting_indices_of_time_windows
+    :param time_window_size_seconds: The size of the time windows
+    :param PIE_windows_bins: number of histogram time bins belonging to each prompt & delay half
+    :return: list of average countrate (counts/sec) for the individual time windows
+    """
+    print("Calculating the average count rate...")
+    avg_count_rate = list()
+    index = 0
+    while index < len(timewindows):
+        t = macro_times[timewindows[index]]
+        mt = micro_times[timewindows[index]]
+        w = np.ones_like(t, dtype=np.float)
+        w[np.where(mt < PIE_windows_bins)] *= 0.0
+        nr_of_photons = sum(w)  # determines number of photons in a time slice
+        avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
+        avg_count_rate.append(avg_countrate)
+        index += 1
+    return avg_count_rate
