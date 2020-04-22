@@ -212,7 +212,7 @@ np.savetxt(
         [
             time_axis,
             average_correlation_amplitude,
-            suren_column,
+            #suren_column,
             std_avg_correlation_amplitude
          ]
     ).T,
@@ -226,7 +226,7 @@ np.savetxt(
         [
             time_axis,
             avg_correlation_amplitude_ch1,
-            suren_column,
+            #suren_column,
             std_avg_correlation_amplitude_ch1
          ]
     ).T,
@@ -240,7 +240,7 @@ np.savetxt(
         [
             time_axis,
             avg_correlation_amplitude_ch2,
-            suren_column,
+            #suren_column,
             std_avg_correlation_amplitude_ch2
          ]
     ).T,
@@ -263,11 +263,6 @@ np.savetxt(
     delimiter='\t'
 )
 
-p.semilogx(time_axis, avg_correlation_amplitude)  # blue cure
-p.semilogx(time_axis, avg_correlation_amplitude_ch2)  # green curve
-p.semilogx(time_axis, avg_correlation_amplitude_ch1)  # orange curve
-p.show()
-
 ########################################################
 #  Save average countrates
 ########################################################
@@ -285,10 +280,32 @@ np.savetxt(
     delimiter='\t'
 )
 
-p.plot(avg_cr_prompt_red)  # blue cure
-p.plot(avg_cr_prompt_green)  # green curve
-p.plot(avg_cr_delay_red)  # orange curve
-p.show()
-
-
 print("Done.")
+
+########################################################
+#  Plotting
+########################################################
+
+fig, ax = p.subplots(nrows=1, ncols=3, constrained_layout=True)
+
+devx = np.arange(len(deviation_from_mean[0]))
+
+ax[0].semilogy(devx, deviation_from_mean[0], label='deviations')
+ax[1].semilogx(time_axis, avg_correlation_amplitude, label='gp-rd')
+ax[1].semilogx(time_axis, avg_correlation_amplitude_ch2, label='rd-rd')
+ax[1].semilogx(time_axis, avg_correlation_amplitude_ch1, label='gp-gp')
+ax[2].plot(avg_cr_prompt_red, label='CR rp')
+ax[2].plot(avg_cr_prompt_green, label='CR gr')
+ax[2].plot(avg_cr_delay_red, label='CR rd')
+
+ax[0].set_xlabel('slice #')
+ax[0].set_ylabel('deviation')
+ax[1].set_xlabel('correlation time [ms]')
+ax[1].set_ylabel('correlation amplitude')
+ax[2].set_xlabel('slice #')
+ax[2].set_ylabel('countrate [Hz]')
+
+legend = ax[0].legend()
+legend = ax[1].legend()
+legend = ax[2].legend()
+p.show()

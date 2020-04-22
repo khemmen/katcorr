@@ -214,17 +214,6 @@ np.savetxt(
     delimiter='\t'
 )
 
-p.plot(avg_countrate_ch1)
-p.plot(avg_countrate_ch2)
-p.show()
-p.plot(rss)
-p.show()
-
-p.semilogx(time_axis, avg_correlation_amplitude)
-p.semilogx(time_axis_acf, avg_correlation_amplitude_ch1)
-p.semilogx(time_axis_acf, avg_correlation_amplitude_ch2)
-p.show()
-
 ########################################################
 #  Save deviations
 ########################################################
@@ -242,6 +231,37 @@ np.savetxt(
 )
 
 print("Done.")
+
+########################################################
+#  Plotting
+########################################################
+fig, ax = p.subplots(nrows=2, ncols=2, constrained_layout=True)
+
+devx = np.arange(len(deviation_from_mean[0]))
+
+ax[0, 0].semilogy(devx, deviation_from_mean[0], label='deviations')
+ax[0, 1].semilogx(time_axis, avg_correlation_amplitude, label='gs-gp')
+ax[0, 1].semilogx(time_axis_acf, avg_correlation_amplitude_ch1, label='gs-gs')
+ax[0, 1].semilogx(time_axis_acf, avg_correlation_amplitude_ch2, label='gp-gp')
+ax[1, 0].plot(avg_countrate_ch1, label='CR gs(perpendicular)')
+ax[1, 0].plot(avg_countrate_ch2, label='CR gp(parallel)')
+ax[1, 1].plot(rss, label='rss')
+
+ax[0, 0].set_xlabel('slice #')
+ax[0, 0].set_ylabel('deviation')
+ax[0, 1].set_xlabel('correlation time [ms]')
+ax[0, 1].set_ylabel('correlation amplitude')
+ax[1, 0].set_xlabel('slice #')
+ax[1, 0].set_ylabel('countrate [Hz]')
+ax[1, 1].set_xlabel('slice #')
+ax[1, 1].set_ylabel('steady-state anisotropy')
+
+legend = ax[0, 0].legend()
+legend = ax[0, 1].legend()
+legend = ax[1, 0].legend()
+legend = ax[1, 1].legend()
+p.show()
+
 
 # ########################################################
 # #  Option: Correlate again with photons of selected curves

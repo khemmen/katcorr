@@ -13,17 +13,17 @@ import functionsPIE
 #  Here the actual data input starts
 ########################################################
 
-data = tttrlib.TTTR('C:/Users/Katherina/Documents/RVZ/b2ADR_cwFCS/2019-07-29_eGFP-b2AR_cw_AB.sptw/A488_1.ptu', 'PTU')
+data = tttrlib.TTTR('A488_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration = header.macro_time_resolution  # unit nanoseconds
 macro_time_calibration /= 1e6  # macro time calibration in milliseconds
 macro_times = data.get_macro_time()
-time_window_size = 5.0  # time window size in seconds (overwrites selection above)
+time_window_size = 1.0  # time window size in seconds (overwrites selection above)
 
 # the dtype to int64 otherwise numba jit has hiccups
 green_1_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
-indices_ch1 = functionsPIE.get_indices_of_time_windows(
+indices_ch1 = functions.get_indices_of_time_windows(
     macro_times=macro_times,
     selected_indices=green_1_indices,
     macro_time_calibration=macro_time_calibration,
@@ -114,11 +114,6 @@ np.savetxt(
     delimiter='\t'
 )
 
-p.plot(avg_countrate_ch1)
-p.show()
-p.semilogx(time_axis, avg_correlation_amplitude)
-p.show()
-
 ########################################################
 #  Save deviations
 ########################################################
@@ -136,3 +131,26 @@ np.savetxt(
 )
 
 print("Done.")
+
+########################################################
+#  Plotting
+########################################################
+fig, ax = p.subplots(nrows=1, ncols=3, constrained_layout=True)
+
+devx = np.arange(len(deviation_from_mean[0]))
+
+ax[0].semilogy(devx, deviation_from_mean[0], label='deviations')
+ax[1].semilogx(time_axis, avg_correlation_amplitude, label='ACF Ch1')
+ax[2].plot(avg_countrate_ch1, label='CR Ch1')
+
+ax[0].set_xlabel('slice #')
+ax[0].set_ylabel('deviation')
+ax[1].set_xlabel('correlation time [ms]')
+ax[1].set_ylabel('correlation amplitude')
+ax[2].set_xlabel('slice #')
+ax[2].set_ylabel('countrate [Hz]')
+
+legend = ax[0].legend()
+legend = ax[1].legend()
+legend = ax[2].legend()
+p.show()

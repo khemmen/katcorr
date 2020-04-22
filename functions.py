@@ -146,7 +146,7 @@ def calculate_deviation(
         correlation_amplitudes: np.ndarray,
         comparison_start: int = 120,
         comparison_stop: int = 180,
-        plot_dev: bool = True,
+        plot_dev: bool = False,
         n: int = 1,
 ) -> typing.List[float]:
     """Determines the similarity of the individual curves towards the first n curves

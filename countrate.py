@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pylab as p
 import tttrlib
+import functions
 
 
 ########################################################
@@ -63,9 +64,24 @@ np.savetxt(
     delimiter='\t'
 )
 
-p.plot(avg_countrate_ch1)
-p.plot(avg_countrate_ch2)
-p.show()
-p.plot(rss)
-p.show()
 print("Done.")
+
+########################################################
+#  Plotting
+########################################################
+
+fig, ax = p.subplots(nrows=1, ncols=2, constrained_layout=True)
+
+ax[0].plot(avg_countrate_ch1, label='CR Ch1(perpendicular)')
+ax[0].plot(avg_countrate_ch2, label='CR Ch2(parallel)')
+ax[1].plot(rss, label='rss')
+
+ax[0].set_xlabel('slice #')
+ax[0].set_ylabel('countrate [Hz]')
+ax[1].set_xlabel('slice #')
+ax[1].set_ylabel('steady-state anisotropy')
+
+legend = ax[0].legend()
+legend = ax[1].legend()
+
+p.show()
