@@ -190,6 +190,7 @@ avg_cr_delay_red = functionsPIE.calculate_cr_delay(
     macro_times=macro_times,
     PIE_windows_bins=PIE_windows_bins
 )
+
 ########################################################
 #  Save correlation curve
 ########################################################

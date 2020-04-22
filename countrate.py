@@ -1,14 +1,12 @@
 from __future__ import annotations
-import typing
 
 import numpy as np
 import pylab as p
 import tttrlib
-import functions
 
 
 ########################################################
-#  Here the actual data input starts
+#  Data input
 ########################################################
 
 data = tttrlib.TTTR('A488_1.ptu', 'PTU')

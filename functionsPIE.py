@@ -269,6 +269,12 @@ def correlate_pieces_delay(
     )
     return correlation_curves
 
+
+#####################################################################
+#  Definition of required functions to calculate countrate for prompt & delay
+#####################################################################
+
+
 def calculate_cr_prompt(
         micro_times: np.ndarray,
         macro_times: np.ndarray,

@@ -220,6 +220,5 @@ def calculate_countrate(
         nr_of_photons = len(timewindows[index])  # determines number of photons in a time slice
         avg_countrate = nr_of_photons / time_window_size_seconds  # division by length of time slice in seconds
         avg_count_rate.append(avg_countrate)
-#        print(avg_countrate)
         index += 1
     return avg_count_rate
