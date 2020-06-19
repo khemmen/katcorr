@@ -6,8 +6,8 @@ from __future__ import annotations
 import numpy as np
 import pylab as p
 import tttrlib
-import functions
-import functionsPIE
+import functions_slice
+import functionsPIE_slice
 
 ########################################################
 #  Here the actual data input starts
@@ -23,7 +23,7 @@ time_window_size = 1.0  # time window size in seconds (overwrites selection abov
 
 # the dtype to int64 otherwise numba jit has hiccups
 green_1_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
-indices_ch1 = functions.get_indices_of_time_windows(
+indices_ch1 = functions_slice.get_indices_of_time_windows(
     macro_times=macro_times,
     selected_indices=green_1_indices,
     macro_time_calibration=macro_time_calibration,
@@ -31,14 +31,14 @@ indices_ch1 = functions.get_indices_of_time_windows(
 )
 
 green_2_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
-indices_ch2 = functions.get_indices_of_time_windows(
+indices_ch2 = functions_slice.get_indices_of_time_windows(
     macro_times=macro_times,
     selected_indices=green_2_indices,
     macro_time_calibration=macro_time_calibration,
     time_window_size_seconds=time_window_size
 )
 
-correlation_curves = functions.correlate_pieces(
+correlation_curves = functions_slice.correlate_pieces(
     macro_times=macro_times,
     indices_ch1=indices_ch1,
     indices_ch2=indices_ch2
@@ -49,7 +49,7 @@ average_correlation_amplitude = correlation_amplitudes.mean(axis=0)
 
 # adjust comparison_start & stop according to your diffusion time
 # the selected values here encompass 1 ms -> 100 ms
-deviation_from_mean = functions.calculate_deviation(
+deviation_from_mean = functions_slice.calculate_deviation(
     correlation_amplitudes=correlation_amplitudes,
     comparison_start=120,
     comparison_stop=180,
@@ -57,7 +57,7 @@ deviation_from_mean = functions.calculate_deviation(
 )
 
 # select the curves with a small enough deviation to be considered in the further analysis
-selected_curves_idx = functions.select_by_deviation(
+selected_curves_idx = functions_slice.select_by_deviation(
     deviations=deviation_from_mean,
     d_max=2e-5
 )
@@ -65,7 +65,7 @@ selected_curves_idx = functions.select_by_deviation(
 ########################################################
 #  Option: get average count rate per slice
 ########################################################
-avg_countrate_ch1 = functions.calculate_countrate(
+avg_countrate_ch1 = functions_slice.calculate_countrate(
     timewindows=indices_ch1,
     time_window_size_seconds=time_window_size
 )
