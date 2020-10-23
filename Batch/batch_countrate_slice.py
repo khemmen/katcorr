@@ -24,6 +24,25 @@ def main(
         g_factor: float = 0.8,
         time_window_size: float = 60.0
 ):
+    """
+    for batch export, please change in the settings file
+    :param filename: name of file to be read
+    :param filetype: filetype to be read, can be ht3, ptu, ...
+    :param average_count_rates_suffix: suffix appended to saved results
+    :param anisotropy_suffix: suffix appended to saved anisotropy calculation
+    :param channel_number_ch1: channel 1 of experiment (perpendicular), here: [0]
+    :param channel_number_ch2: channel 2 of experiment (parallel), here: [2]
+    :param make_plots: set "true" if images should be saved
+    :param display_plot: set "true" if images should be displayed
+    :param anisotropy: set "true" if anisotropy should be calculated
+    :param g_factor: enter value of the g-factor calibrated fram a reference experiment
+    :param time_window_size: averaging window in seconds
+    :return:
+    """
+    ########################################################
+    #  Dataselection
+    ########################################################
+
     basename = os.path.abspath(filename).split(".")[0]
     data = tttrlib.TTTR(filename, filetype)
     # rep rate = 80 MHz

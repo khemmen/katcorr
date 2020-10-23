@@ -32,8 +32,31 @@ def main(
         g_factor: float = 0.8,
         time_window_size: float = 60.0  # time window size in seconds
 ):
+    """
+
+    :param filename: name of file to be read
+    :param filetype: filetype to be read, can be ht3, ptu, ...
+    :param n_casc_fine: nr of correlation cascades for full cross-correlation
+    :param n_casc_coarse: nr of correlation cascades for auto-correlation (no microtimes used)
+    :param comparison_start: start bin for comparison range of correlation amplitude (not time but bin nr!)
+    :param comparison_stop: end bin for comparison range of correlation amplitude (not time but bin nr!)
+    :param n_comparison: nr of curves to average and to compare all other curves to
+    :param deviation_max: upper threshold of deviation, only curve with d < dmax are selected
+    :param cc_suffix: suffix appended to saved results from crosscorrelation
+    :param acf1_suffix: suffix appended to saved results from autocorrelation from ch1
+    :param acf2_suffix: suffix appended to saved results from autocorrelation from ch2
+    :param average_count_rates_suffix: suffix appended to saved results from count rate calculation
+    :param deviations_suffix: suffix appended to saved deviations
+    :param channel_number_ch1: channel 1 of experiment (perpendicular), here: [0]
+    :param channel_number_ch2: channel 2 of experiment (parallel), here: [2]
+    :param make_plots: set "true" if images should be saved
+    :param display_plot: set "true" if images should be displayed
+    :param g_factor: enter value of the g-factor calibrated fram a reference experiment
+    :param time_window_size: averaging window in seconds
+    :return:
+    """
     ########################################################
-    #  Actual data input & optional selections
+    #  Dataselection for the different correlations
     ########################################################
     basename = os.path.abspath(filename).split(".")[0]
     data = tttrlib.TTTR(filename, filetype)
@@ -289,106 +312,7 @@ def main(
         p.savefig(basename + ".svg", dpi=150)
         if display_plot:
             p.show()
-
-
-    # ########################################################
-    # #  Option: Correlate again with photons of selected curves
-    # ########################################################
-    #
-    # # get indices of events which belong to selected curves
-    # selected_ch1_events = list()
-    # for i in selected_curves_idx:
-    #     selected_ch1_events.append(indices_ch1[i])
-    # selected_ch1_events = np.hstack(selected_ch1_events)
-    #
-    # selected_ch2_events = list()
-    # for i in selected_curves_idx:
-    #     selected_ch2_events.append(indices_ch2[i])
-    # selected_ch2_events = np.hstack(selected_ch2_events)
-    #
-    # # correlated with selected indices
-    # x, y = correlate(
-    #     macro_times=macro_times,
-    #     indices_ch1=selected_ch1_events,
-    #     indices_ch2=selected_ch2_events,
-    #     B=9,
-    #     n_casc=25
-    # )
-    #
-    # ########################################################
-    # #  Option: Select by half height instead of averaged diffusion part
-    # ########################################################
-    # def select_by_half_height_time(
-    #         correlation_amplitudes: typing.List[np.ndarray],
-    #         number_of_stdev: float = 1.0
-    # ) -> typing.List[int]:
-    #     #  calculate mean of the first correlation points
-    #     #  use these correlation points as the initial amplitude
-    #     initial_amplitudes = np.mean(correlation_amplitudes[:, 5:30], axis=1)
-    #     # get the baseline of the correlation amplitudes
-    #     offsets = np.array(correlation_amplitudes[:, -1])
-    #     # calculate the average between initial_amplitude and offset
-    #
-    #     # find the indices of half the initial amplitude searching
-    #     # backwards from the offset to half the maximum
-    #     i_half_max = list()
-    #     for correlation_amplitude, initial_amplitude, offset in zip(
-    #             correlation_amplitudes,
-    #             initial_amplitudes,
-    #             offsets
-    #     ):
-    #         imaxhalf = np.max(
-    #             np.nonzero(
-    #                 correlation_amplitude > (initial_amplitude - offset) / 2 + offset
-    #             )
-    #         )
-    #         i_half_max.append(imaxhalf)
-    #
-    #     # calculate mean and stdev of i_half_max
-    #     mean_half_max = np.mean(i_half_max)
-    #     stdev_half_max = number_of_stdev * np.std(i_half_max)
-    #
-    #     # filter curves for those within 1 sigma
-    #     selected_curves_idx = list()
-    #     for i, hm in enumerate(i_half_max):
-    #         if mean_half_max - stdev_half_max < hm < mean_half_max + stdev_half_max:
-    #             selected_curves_idx.append(i)
-    #     print("Total number of curves: ", len(i_half_max))
-    #     print("Selected curves: ", len(selected_curves_idx))
-    #     return selected_curves_idx
-
-    # ########################################################
-    # #  Option: Introduce weights while correlating
-    # ########################################################
-    # def fcs_weights(
-    #         t: np.ndarray,
-    #         g: np.ndarray,
-    #         dur: float,
-    #         cr: float
-    # ):
-    #     """
-    #     :param t: correlation times [ms]
-    #     :param g: correlation amplitude
-    #     :param dur: measurement duration [s]
-    #     :param cr: count-rate [kHz]
-    #     """
-    #     dt = np.diff(t)
-    #     dt = np.hstack([dt, dt[-1]])
-    #     ns = dur * 1000.0 / dt
-    #     na = dt * cr
-    #     syn = (t < 10) + (t >= 10) * 10 ** (-np.log(t + 1e-12) / np.log(10) + 1)
-    #     b = np.mean(g[1:5]) - 1
-    #     imaxhalf = np.min(np.nonzero(g < b / 2 + 1))
-    #     tmaxhalf = t[imaxhalf]
-    #     A = np.exp(-2 * dt / tmaxhalf)
-    #     B = np.exp(-2 * t / tmaxhalf)
-    #     m = t / dt
-    #     Suren-way of weighting (when compared to other methods of weighting this was advantageous)
-    #     defined by try-and-error
-    #     S = (b * b / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) + 2 * b / ns / na * (1 + B) + (1 + b *
-    #     np.sqrt(B)) / (ns * na * na)) * syn
-    #     S = np.abs(S)
-    #     return 1. / np.sqrt(S)
+        p.close()
 
 
 if __name__ == "__main__":

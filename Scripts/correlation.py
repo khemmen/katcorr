@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pylab as p
 import tttrlib
-import functions
+from Scripts import functions
 
 ########################################################
 #  Actual data input & optional selections
@@ -50,12 +50,11 @@ autocorr_curve_ch2 = functions.correlate(
 ########################################################
 #  Save correlation curve
 ########################################################
-time_axis = crosscorrelation_curve[0]* macro_time_calibration_ms
-crosscorrelation_curve = crosscorrelation_curve[1]  # 2nd column contains the average correlation amplitude calculated above
+time_axis = crosscorrelation_curve[0] * macro_time_calibration_ms
+crosscorrelation_curve = crosscorrelation_curve[1]  # 2nd column contains the average correlation amplitude
 autocorrelation_ch1 = autocorr_curve_ch1[1]
-autocorrelation_ch2 = autocorr_curve_ch1[1]
+autocorrelation_ch2 = autocorr_curve_ch2[1]
 suren_column = np.zeros_like(time_axis)  # fill 3rd column with 0's for compatibility with ChiSurf
-suren_column_acf = np.zeros_like(time_axis_acf)
 
 # 4th column will contain standard deviation
 # How to get errors for single curve?
@@ -68,7 +67,7 @@ np.savetxt(
             time_axis,
             crosscorrelation_curve,
             suren_column,
-            #std_avg_correlation_amplitude
+            # std_avg_correlation_amplitude
         ]
     ).T,
     delimiter='\t'
@@ -82,7 +81,7 @@ np.savetxt(
             time_axis,
             autocorrelation_ch1,
             suren_column,
-            #std_avg_correlation_amplitude_ch1
+            # std_avg_correlation_amplitude_ch1
         ]
     ).T,
     delimiter='\t'
@@ -96,7 +95,7 @@ np.savetxt(
             time_axis,
             autocorrelation_ch2,
             suren_column,
-            #std_avg_correlation_amplitude_ch2
+            # std_avg_correlation_amplitude_ch2
         ]
     ).T,
     delimiter='\t'

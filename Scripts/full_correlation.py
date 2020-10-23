@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pylab as p
 import tttrlib
-import functions
+from Scripts import functions
 
 ########################################################
 #  Actual data input & optional selections

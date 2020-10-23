@@ -7,7 +7,6 @@ import numpy as np
 import pylab as p
 import tttrlib
 import functions_slice
-import functionsPIE_slice
 
 ########################################################
 #  Here the actual data input starts
@@ -153,4 +152,5 @@ ax[2].set_ylabel('countrate [Hz]')
 legend = ax[0].legend()
 legend = ax[1].legend()
 legend = ax[2].legend()
+p.savefig("result.svg", dpi=150)
 p.show()

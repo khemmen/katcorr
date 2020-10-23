@@ -9,7 +9,7 @@ import functions_slice
 #  Data input
 ########################################################
 
-data = tttrlib.TTTR('A488_1.ptu', 'PTU')
+data = tttrlib.TTTR('A88_1.ptu', 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration = header.macro_time_resolution  # unit nanoseconds
@@ -49,7 +49,7 @@ parallel_channel = np.array(avg_countrate_ch2)
 perpendicular_channel = np.array(avg_countrate_ch1)
 rss = (parallel_channel - g_factor * perpendicular_channel) / (parallel_channel + 2 * g_factor * perpendicular_channel)
 
-filename = 'avg_countrate.txt'
+filename = 'avg_countrate_A88_1.txt'
 np.savetxt(
     filename,
     np.vstack(
@@ -82,5 +82,5 @@ ax[1].set_ylabel('steady-state anisotropy')
 
 legend = ax[0].legend()
 legend = ax[1].legend()
-
+p.savefig('A88_1.svg', dpi=150)
 p.show()

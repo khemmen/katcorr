@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pylab as p
 import tttrlib
-import functions
+from Scripts import functions
 
 ########################################################
 #  Data input & optional selection process
@@ -17,7 +17,6 @@ macro_time_calibration_ms = macro_time_calibration_ns / 1e6  # macro time calibr
 micro_time_resolution = header.micro_time_resolution
 macro_times = data.get_macro_time()
 micro_times = data.get_micro_time()
-time_window_size = 1.0  # time window size in seconds
 number_of_bins = macro_time_calibration_ns/micro_time_resolution
 PIE_windows_bins = int(number_of_bins/2)
 
@@ -26,7 +25,6 @@ print("macro_time_calibration_ms:", macro_time_calibration_ms)
 print("micro_time_resolution_ns:", micro_time_resolution)
 print("number_of_bins:", number_of_bins)
 print("PIE_windows_bins:", PIE_windows_bins)
-print("time_window_size:", time_window_size)
 
 # the dtype to int64 otherwise numba jit has hiccups
 green_indices = np.array(data.get_selection_by_channel([0, 2]), dtype=np.int64)
@@ -95,7 +93,7 @@ autocorr_delay_r = functions.correlate_delay(
 ########################################################
 time_axis = PIEcrosscorrelation_curve[0] * macro_time_calibration_ms
 # calculates the correct time axis by multiplication of x-axis with macro_time
-PIEcrosscorrelation = PIEcrosscorrelation_curve[1]  # 2nd column contains the average correlation amplitude calculated above
+PIEcrosscorrelation = PIEcrosscorrelation_curve[1]  # 2nd column contains the average correlation amplitude
 FRETcrosscorrelation = FRETcrosscorrelation_curve[1]
 autocorrelation_green_prompt = autocorr_prompt_g[1]
 autocorrelation_red_prompt = autocorr_prompt_r[1]
@@ -113,7 +111,7 @@ np.savetxt(
             time_axis,
             PIEcrosscorrelation,
             suren_column,
-            #std_avg_correlation_amplitude
+            # std_avg_correlation_amplitude
          ]
     ).T,
     delimiter='\t'
@@ -127,7 +125,7 @@ np.savetxt(
             time_axis,
             FRETcrosscorrelation,
             suren_column,
-            #std_avg_correlation_amplitude
+            # std_avg_correlation_amplitude
          ]
     ).T,
     delimiter='\t'
@@ -142,7 +140,7 @@ np.savetxt(
             time_axis,
             autocorrelation_green_prompt,
             suren_column,
-            #std_avg_correlation_amplitude_ch1
+            # std_avg_correlation_amplitude_ch1
          ]
     ).T,
     delimiter='\t'
@@ -156,7 +154,7 @@ np.savetxt(
             time_axis,
             autocorrelation_red_prompt,
             suren_column,
-            #std_avg_correlation_amplitude_ch2
+            # std_avg_correlation_amplitude_ch2
          ]
     ).T,
     delimiter='\t'
@@ -170,7 +168,7 @@ np.savetxt(
             time_axis,
             autocorrelation_red_delay,
             suren_column,
-            #std_avg_correlation_amplitude_ch2
+            # std_avg_correlation_amplitude_ch2
          ]
     ).T,
     delimiter='\t'

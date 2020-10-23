@@ -9,7 +9,8 @@ import functions_slice
 #  Data input & optional selection process
 ########################################################
 
-data = tttrlib.TTTR('A488_1.ptu', 'PTU')
+#data = tttrlib.TTTR(r"\\HC1008\Users\AG Heinze\DATA\FCSSetup\2020\20200717_FK_ LANAP\cellsptw\A47 730nm 100um_cell2.ptu", 'PTU')
+data = tttrlib.TTTR("A488_1.ptu", 'PTU')
 # rep rate = 80 MHz
 header = data.get_header()
 macro_time_calibration_ns = header.macro_time_resolution  # unit nanoseconds
@@ -19,6 +20,7 @@ time_window_size = 1.0  # time window size in seconds
 print("macro_time_calibration_ns:", macro_time_calibration_ns)
 print("macro_time_calibration_ms:", macro_time_calibration_ms)
 print("time_window_size:", time_window_size)
+print("duration:", len(macro_times))
 
 # the dtype to int64 otherwise numba jit has hiccups
 green_s_indices = np.array(data.get_selection_by_channel([0]), dtype=np.int64)
@@ -91,7 +93,7 @@ deviation_from_mean = functions_slice.calculate_deviation(
 # select the curves with a small enough deviation to be considered in the further analysis
 selected_curves_idx = functions_slice.select_by_deviation(
     deviations=deviation_from_mean,
-    d_max=6e-3
+    d_max=0.5
 )
 
 # sort squared deviations (get the indices)
@@ -199,7 +201,7 @@ np.savetxt(
 #  Calculate steady-state anisotropy & save count rate per slice
 ########################################################
 
-g_factor = 0.8  # please change according to your setup calibration
+g_factor = 1  # please change according to your setup calibration
 total_countrate = np.array(avg_countrate_ch2) + np.array(avg_countrate_ch2)
 parallel_channel = np.array(avg_countrate_ch2)
 perpendicular_channel = np.array(avg_countrate_ch1)
@@ -265,4 +267,5 @@ legend = ax[0, 0].legend()
 legend = ax[0, 1].legend()
 legend = ax[1, 0].legend()
 legend = ax[1, 1].legend()
+p.savefig("result.svg", dpi=150)
 p.show()

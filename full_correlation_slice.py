@@ -262,6 +262,7 @@ legend = ax[0, 0].legend()
 legend = ax[0, 1].legend()
 legend = ax[1, 0].legend()
 legend = ax[1, 1].legend()
+p.savefig("result.svg", dpi=150)
 p.show()
 
 # ########################################################
